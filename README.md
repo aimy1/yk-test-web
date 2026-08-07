@@ -1,45 +1,62 @@
 # 油库资产数据采集系统 - PC 端 Web 管理控制台 (yk-test-web)
 
-PC 端 Web 管理控制台，使用 React 18 + TypeScript + Vite + Tailwind CSS 构建。
+![React](https://img.shields.io/badge/Frontend-React_18-61DAFB)
+![TypeScript](https://img.shields.io/badge/Language-TypeScript_5-3178C6)
+![Vite](https://img.shields.io/badge/Build-Vite_6-646CFF)
+![Tailwind](https://img.shields.io/badge/Style-Tailwind_CSS_3-06B6D4)
+![ECharts](https://img.shields.io/badge/Charts-ECharts_5-AA0000)
+
+`yk-test-web` 是油库资产数据采集与管理系统的 PC 端 Web 数据治理控制台。基于 **React 18**、**TypeScript**、**Vite 6** 与 **Tailwind CSS** 构建，采用工业极简高对比度美学架构，结合 ECharts 5 图表引擎，为管理员提供资产维护、异构 Excel 数据导入清洗、质量核查、3D 彩码生成与矢量标牌打印功能。
 
 ---
 
-## 页面模块 (11 个视图)
+## 11 大核心功能视图模块
 
-- **`DataMaintenanceView` (数据维护)**: 资产增删改查、多维搜索筛选、点击列头动态排序。
-- **`DataInspectionView` (数据检查与导入)**: 外部 Excel/JSON 数据导入，智能匹配列头，重复项 (`is_duplicate`) 和错项 (`has_error`) 高亮标识，确认后提交入库。
-- **`CategoryManagementView` (分类与模板)**: 设备分类树管理，为分类配置扩展属性模板。
-- **`QualityCheckView` (数据质量核查)**: 检查全库数据完整性与合规率。
-- **`ColorCodeView` (3D 彩码与标签)**: 8x8 三维彩码在线生成与解包，生成二维码和防爆铭牌并支持打印。
-- **`DataExportApiView` (数据导出与接口)**: 导出 YOUK 资产包及接口测试。
-- **`UnitIsolationView` (单位管理)**: 维护油库单位树与代码映射。
-- **`AuditLogView` (日志审计)**: 查看与导出系统操作日志。
-- **`AnalyticsDashboardView` (统计大屏)**: 显示资产总量、编码进度及设备状态分布图表。
-- **`MobileSyncView` (移动端同步)**: 查看 PDA 离线草稿箱并处理同步冲突。
-- **`SystemSettingsView` (系统设置)**: 数据库备份日志与服务状态监测。
-
----
-
-## 关键技术
-
-- **React 18 + TypeScript**: 类型安全的前端开发。
-- **Vite 6**: 快速构建与开发代理。
-- **SheetJS (xlsx)**: 解析和生成 Excel 电子表格。
-- **ECharts 5**: 绘制统计图表。
-- **qrcode**: 渲染二维码。
+1. **`DataMaintenanceView` (资产维护)**: 资产全生命周期增删改查、多维条件筛选、点击列头交互式正逆序动态排序。
+2. **`DataInspectionView` (数据检查与导入)**: 外部异构 Excel/JSON 数据解析，智能匹配列名，重复项 (`is_duplicate`) 与缺失格式 (`has_error`) 标色彩提示，勾选后提交后端事务入库。
+3. **`CategoryManagementView` (分类与扩展模板)**: 资产大/中/小类树形管理，为设备小类配置专属扩展属性模板。
+4. **`QualityCheckView` (数据质量核查)**: 评估全库数据的完整性、唯一性与规范性，输出质量诊断报告。
+5. **`ColorCodeView` (3D 彩码与电子标签)**: 在线渲染 8x8 四色阵列三维彩码与符合 ISO/IEC 18004 规范的矢量二维码标牌，支持工业热敏打印。
+6. **`DataExportApiView` (数据导出与 API 联调)**: 导出 YOUK 标准资产包与上级 API (Push/Pull) 联调测试控制台。
+7. **`UnitIsolationView` (单位隔离管理)**: 多油库单位树形架构维护与多套代码映射 (`mappings`) 管理。
+8. **`AuditLogView` (日志审计)**: 穿透式查询登录与操作审计日志，支持过滤导出。
+9. **`AnalyticsDashboardView` (统计大屏)**: 可视化呈现油库资产总量、编码进度及运行状态分布。
+10. **`MobileSyncView` (移动端同步)**: 查看 PDA 暂存的离线草稿队列并处理同步冲突。
+11. **`SystemSettingsView` (系统设置)**: 数据库备份日志与 REST API 3001 端口服务健康度检测。
 
 ---
 
-## 本地运行
+## 工程目录结构
 
-```bash
-# 安装依赖
-npm install
-
-# 启动开发服务 (默认 http://localhost:5173)
-npm run dev
-
-# 构建打包
-npm run build
+```text
+src/
+├── App.tsx                   # 应用主入口、路由与全局状态
+├── index.css                 # 全局设计 Token 与 Tailwind CSS 指令
+├── components/
+│   ├── Header.tsx            # 系统顶部导航栏
+│   ├── Sidebar.tsx           # 侧边栏 11 大模块无障碍导航
+│   └── views/                # 11 个独立业务视图组件
+└── services/
+    └── api.ts                # REST API 异步 Fetch 服务
 ```
-打包产物位于 `dist/` 目录。
+
+---
+
+## 开发与构建指南
+
+### 1. 安装依赖
+```bash
+npm install
+```
+
+### 2. 本地开发
+```bash
+npm run dev
+# 开发服务运行于 http://localhost:5173
+```
+
+### 3. 编译打包
+```bash
+npm run build
+# 静态资源输出至 dist/ 目录
+```
