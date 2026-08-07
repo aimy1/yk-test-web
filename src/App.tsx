@@ -18,6 +18,7 @@ import { AnalyticsDashboardView } from './components/views/AnalyticsDashboardVie
 import { TerminalManagementView } from './components/views/TerminalManagementView';
 import { UserManagementView } from './components/views/UserManagementView';
 import { AuditLogsView } from './components/views/AuditLogsView';
+import { CategoryManagementView } from './components/views/CategoryManagementView';
 import { FieldTemplateView } from './components/views/FieldTemplateView';
 import { AuditWorkflowView } from './components/views/AuditWorkflowView';
 import { AppMobileView } from './components/views/AppMobileView';
@@ -104,8 +105,11 @@ export const App: React.FC = () => {
         return <UnitManagementView key={refreshKey} />;
       case 'location':
         return <LocationManagementView key={refreshKey} />;
+      case 'category':
+        return <CategoryManagementView key={refreshKey} />;
       case 'field_template':
         return <FieldTemplateView key={refreshKey} />;
+
       case 'rules':
         return <CodeRulesView key={refreshKey} />;
       case 'dict':

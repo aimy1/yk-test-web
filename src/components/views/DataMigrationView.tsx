@@ -41,12 +41,12 @@ export const DataMigrationView: React.FC = () => {
   const handleSaveEdit = async () => {
     if (!editingItem) return;
     try {
-      await api.saveAsset(editingItem);
-      alert('修正已保存！');
+      await api.editExternalAsset(editingItem.id, editingItem);
+      alert('外接库异常数据修正已保存！');
       setEditingItem(null);
       loadData();
     } catch (err) {
-      alert('保存失败');
+      alert('保存修改失败');
     }
   };
 

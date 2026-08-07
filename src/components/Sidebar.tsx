@@ -29,6 +29,7 @@ export type ModuleId =
   | 'export'
   | 'unit'
   | 'location'
+  | 'category'
   | 'field_template'
   | 'audit_workflow'
   | 'rules'
@@ -68,6 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
   const systemModules = [
     { id: 'unit' as ModuleId, label: '单位管理', icon: Building2, adminOnly: true },
     { id: 'location' as ModuleId, label: '场所管理', icon: MapPin },
+    { id: 'category' as ModuleId, label: '资产分类树管理', icon: Sliders },
     { id: 'field_template' as ModuleId, label: '扩展属性配置', icon: Sliders },
     { id: 'rules' as ModuleId, label: '编码规则', icon: Barcode },
     { id: 'dict' as ModuleId, label: '数据字典', icon: BookOpen },
@@ -78,6 +80,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
     { id: 'log' as ModuleId, label: '系统日志审计', icon: FileText },
     { id: 'app_mobile' as ModuleId, label: 'App 移动采集端引擎', icon: Smartphone },
   ];
+
 
   return (
     <aside className="w-64 bg-white/90 backdrop-blur-md border-r border-slate-200/80 flex flex-col justify-between select-none">

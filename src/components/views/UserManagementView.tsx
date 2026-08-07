@@ -59,6 +59,18 @@ export const UserManagementView: React.FC = () => {
     }
   };
 
+  const handleResetPassword = async (user: SystemUser) => {
+    const newPass = prompt(`重置用户 [${user.username}] (${user.name}) 的密码：`, 'admin123');
+    if (!newPass) return;
+    try {
+      const res = await api.changePassword(user.username, newPass);
+      alert(res.message || `用户 [${user.username}] 密码重置成功！`);
+      loadUsers();
+    } catch (err: any) {
+      alert('重置密码失败: ' + (err.message || '系统错误'));
+    }
+  };
+
   const handleExport = () => {
     const data = filtered.map(u => ({
       '用户ID': u.id,
@@ -164,6 +176,9 @@ export const UserManagementView: React.FC = () => {
                   )}
                 </td>
                 <td className="p-3.5 text-right space-x-2">
+                  <button onClick={() => handleResetPassword(u)} className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg border border-amber-200 text-[11px] font-medium shadow-2xs">
+                    <KeyRound className="w-3 h-3 inline mr-1 text-amber-600" /> 重置密码
+                  </button>
                   <button onClick={() => { setFormData(u); setShowModal(true); }} className="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 rounded-lg border border-slate-200 text-[11px] font-medium shadow-2xs">
                     <Edit className="w-3 h-3 inline mr-1 text-blue-600" /> 编辑
                   </button>

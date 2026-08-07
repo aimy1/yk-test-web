@@ -12,14 +12,34 @@ import {
   AuditRecord
 } from '../types';
 
-const API_BASE = 'http://127.0.0.1:3001/api/v1';
+const getApiBase = () => {
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname || '127.0.0.1';
+    return `http://${host}:3001/api/v1`;
+  }
+  return 'http://127.0.0.1:3001/api/v1';
+};
+
+const API_BASE = getApiBase();
 
 async function fetchJson<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  let tokenStr = '';
+  try {
+    const saved = localStorage.getItem('youk_user_session');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      tokenStr = parsed.token || '';
+    }
+  } catch (e) {}
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(tokenStr ? { 'Authorization': `Bearer ${tokenStr}` } : {}),
+    ...(options?.headers as Record<string, string>),
+  };
+
   const res = await fetch(`${API_BASE}${endpoint}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
+    headers,
     ...options,
   });
 
@@ -186,6 +206,55 @@ export const api = {
   deleteUser: (id: string) =>
     fetchJson<any>(`/users/${id}`, { method: 'DELETE' }),
 
+  changePassword: (username: string, newPassword: string, oldPassword?: string) =>
+    fetchJson<any>('/users/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ username, new_password: newPassword, old_password: oldPassword }),
+    }),
+
+  exportZipPackage: () => fetchJson<any>('/assets/export-zip'),
+
+  batchImportAssets: (items: Partial<Asset>[]) =>
+    fetchJson<any>('/assets/batch-import', {
+      method: 'POST',
+      body: JSON.stringify(items),
+    }),
+
+  editExternalAsset: (id: string, payload: any) =>
+    fetchJson<any>(`/external/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+
+  exportCheckErrors: (fileName?: string) =>
+    fetchJson<any>('/check/export', {
+      method: 'POST',
+      body: JSON.stringify({ file_name: fileName }),
+    }),
+
+  getCategories: () => fetchJson<any[]>('/categories'),
+
+  saveCategory: (cat: any) =>
+    fetchJson<any>('/categories', {
+      method: 'POST',
+      body: JSON.stringify(cat),
+    }),
+
+  deleteCategory: (id: number) =>
+    fetchJson<any>(`/categories/${id}`, { method: 'DELETE' }),
+
+  pushApiData: (systemName?: string) =>
+    fetchJson<any>('/asset/api/push', {
+      method: 'POST',
+      body: JSON.stringify({ system_name: systemName || '上级JD资产管理平台' }),
+    }),
+
+  pullApiData: (systemName?: string) =>
+    fetchJson<any>('/asset/api/pull', {
+      method: 'POST',
+      body: JSON.stringify({ system_name: systemName || '网格化管理平台' }),
+    }),
+
   getLogs: () => fetchJson<AuditLog[]>('/logs'),
 
   deleteLog: (id: string) =>
@@ -194,3 +263,4 @@ export const api = {
   clearLogs: () =>
     fetchJson<any>('/logs/clear', { method: 'DELETE' }),
 };
+

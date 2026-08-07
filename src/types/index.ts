@@ -146,3 +146,16 @@ export interface AnalyticsData {
   pie_chart: Array<{ status: string; count: number }>;
   line_chart: Array<{ date: string; coded: number; pending: number }>;
 }
+
+export interface AssetCategory {
+  id: number;
+  parent_id: number;
+  class_name: string;
+  class_code: string;
+  full_class_code: string;
+  level: number;
+  number_rule_id?: string;
+  status: number;
+  deleted?: boolean;
+}
+

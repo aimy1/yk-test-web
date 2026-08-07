@@ -11,23 +11,32 @@ export const DataExportApiView: React.FC = () => {
   const [latency, setLatency] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleExportPackage = () => {
-    const pkgContent = {
-      export_time: new Date().toISOString(),
-      target_system: selectedSystem,
-      version: '2.6.0',
-      data_format: 'YOUK_ASSET_PACKAGE_V2',
-      security_checksum: 'SHA256-8A91F92B3C99F128A',
-      total_items: 4,
-      author: 'arch1',
-      unit_code: 'UNIT-001',
-    };
-    const blob = new Blob([JSON.stringify(pkgContent, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `油库资产数据包_${selectedSystem}_${Date.now()}.json`;
-    a.click();
+  const handleExportPackage = async () => {
+    try {
+      setLoading(true);
+      const res = await api.exportZipPackage();
+      const pkgContent = {
+        export_time: res.exported_at || new Date().toISOString(),
+        target_system: selectedSystem,
+        version: '2.6.0',
+        data_format: 'YOUK_ASSET_PACKAGE_FULL_V2',
+        security_checksum: `SHA256-${Math.random().toString(36).substring(2, 12).toUpperCase()}`,
+        total_items: res.total || 0,
+        author: 'arch1 (油库管理员)',
+        unit_code: 'UNIT-001',
+        assets: res.data || [],
+      };
+      const blob = new Blob([JSON.stringify(pkgContent, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = res.file_name || `油库资产归档包_${selectedSystem}_${Date.now()}.json`;
+      a.click();
+    } catch (err: any) {
+      alert('导出数据包失败: ' + (err.message || '网络连接错误'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleTestApi = async (endpoint: string) => {
@@ -39,6 +48,8 @@ export const DataExportApiView: React.FC = () => {
       if (endpoint === '/assets') data = await api.getAssets();
       else if (endpoint === '/units') data = await api.getUnits();
       else if (endpoint === '/analytics') data = await api.getAnalytics();
+      else if (endpoint === '/asset/api/push') data = await api.pushApiData('上级JD资产管理系统');
+      else if (endpoint === '/asset/api/pull') data = await api.pullApiData('网格化管理平台');
       const endTime = performance.now();
       setLatency(Math.round(endTime - startTime));
       setApiStatus(200);
@@ -208,6 +219,22 @@ export const DataExportApiView: React.FC = () => {
                 }`}
               >
                 GET /api/v1/analytics
+              </button>
+              <button
+                onClick={() => handleTestApi('/asset/api/push')}
+                className={`px-3 py-1.5 rounded-xl font-mono text-xs font-semibold border transition-all ${
+                  apiEndpoint === '/asset/api/push' ? 'bg-slate-900 text-white border-slate-900 shadow-2xs' : 'bg-slate-50 text-slate-700 border-slate-200'
+                }`}
+              >
+                POST /api/v1/asset/api/push
+              </button>
+              <button
+                onClick={() => handleTestApi('/asset/api/pull')}
+                className={`px-3 py-1.5 rounded-xl font-mono text-xs font-semibold border transition-all ${
+                  apiEndpoint === '/asset/api/pull' ? 'bg-slate-900 text-white border-slate-900 shadow-2xs' : 'bg-slate-50 text-slate-700 border-slate-200'
+                }`}
+              >
+                POST /api/v1/asset/api/pull
               </button>
             </div>
 

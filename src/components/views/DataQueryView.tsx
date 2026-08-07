@@ -15,12 +15,30 @@ export const DataQueryView: React.FC = () => {
     api.getAssets().then(setAssets);
   }, []);
 
-  const filtered = assets.filter((a) => {
-    const matchKw = a.name.includes(keyword) || a.code.includes(keyword) || a.manufacturer.includes(keyword);
-    const matchCat = categoryFilter === 'ALL' || a.category === categoryFilter;
-    const matchStatus = statusFilter === 'ALL' || a.status === statusFilter;
-    return matchKw && matchCat && matchStatus;
-  });
+  const [sortField, setSortField] = useState<keyof Asset>('code');
+  const [sortAsc, setSortAsc] = useState<boolean>(true);
+
+  const handleSort = (field: keyof Asset) => {
+    if (sortField === field) {
+      setSortAsc(!sortAsc);
+    } else {
+      setSortField(field);
+      setSortAsc(true);
+    }
+  };
+
+  const filtered = assets
+    .filter((a) => {
+      const matchKw = a.name.includes(keyword) || a.code.includes(keyword) || a.manufacturer.includes(keyword);
+      const matchCat = categoryFilter === 'ALL' || a.category === categoryFilter;
+      const matchStatus = statusFilter === 'ALL' || a.status === statusFilter;
+      return matchKw && matchCat && matchStatus;
+    })
+    .sort((a, b) => {
+      const valA = String(a[sortField] || '');
+      const valB = String(b[sortField] || '');
+      return sortAsc ? valA.localeCompare(valB, 'zh-CN') : valB.localeCompare(valA, 'zh-CN');
+    });
 
   const handleExportExcel = () => {
     const exportData = filtered.map((a) => ({
@@ -51,7 +69,7 @@ export const DataQueryView: React.FC = () => {
             数据查询统计
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            通过关键字及资产分类等查询条件，查询设备设施的相关信息并形成统计表，支持一键导出为 EXCEL 文件。
+            通过关键字及资产分类等查询条件，查询设备设施的相关信息并形成统计表，支持列点击交互排序与一键导出 EXCEL。
           </p>
         </div>
         <button
@@ -110,7 +128,7 @@ export const DataQueryView: React.FC = () => {
       {/* Statistics Table */}
       <div className="bg-white/90 backdrop-blur-md rounded-2xl border border-slate-200/80 overflow-hidden shadow-2xs">
         <div className="p-4 bg-slate-50/80 border-b border-slate-200/80 flex justify-between items-center text-xs">
-          <span className="font-bold text-slate-800">检索统计结果</span>
+          <span className="font-bold text-slate-800">检索统计结果 (点击表头列名称可切换升/降排序)</span>
           <span className="text-blue-600 font-mono font-bold">符合条件: {filtered.length} 条记录</span>
         </div>
 
@@ -118,12 +136,24 @@ export const DataQueryView: React.FC = () => {
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50/80 text-slate-500 border-b border-slate-200">
               <tr>
-                <th className="p-3.5 font-semibold">编目编码</th>
-                <th className="p-3.5 font-semibold">资产名称</th>
-                <th className="p-3.5 font-semibold">分类</th>
-                <th className="p-3.5 font-semibold">管理单位</th>
-                <th className="p-3.5 font-semibold">安装位置</th>
-                <th className="p-3.5 font-semibold">状态</th>
+                <th onClick={() => handleSort('code')} className="p-3.5 font-semibold cursor-pointer hover:text-slate-900 select-none">
+                  编目编码 {sortField === 'code' ? (sortAsc ? '▲' : '▼') : '↕'}
+                </th>
+                <th onClick={() => handleSort('name')} className="p-3.5 font-semibold cursor-pointer hover:text-slate-900 select-none">
+                  资产名称 {sortField === 'name' ? (sortAsc ? '▲' : '▼') : '↕'}
+                </th>
+                <th onClick={() => handleSort('category')} className="p-3.5 font-semibold cursor-pointer hover:text-slate-900 select-none">
+                  分类 {sortField === 'category' ? (sortAsc ? '▲' : '▼') : '↕'}
+                </th>
+                <th onClick={() => handleSort('unit_name')} className="p-3.5 font-semibold cursor-pointer hover:text-slate-900 select-none">
+                  管理单位 {sortField === 'unit_name' ? (sortAsc ? '▲' : '▼') : '↕'}
+                </th>
+                <th onClick={() => handleSort('install_position')} className="p-3.5 font-semibold cursor-pointer hover:text-slate-900 select-none">
+                  安装位置 {sortField === 'install_position' ? (sortAsc ? '▲' : '▼') : '↕'}
+                </th>
+                <th onClick={() => handleSort('status')} className="p-3.5 font-semibold cursor-pointer hover:text-slate-900 select-none">
+                  状态 {sortField === 'status' ? (sortAsc ? '▲' : '▼') : '↕'}
+                </th>
                 <th className="p-3.5 font-semibold">出厂/JD码</th>
                 <th className="p-3.5 font-semibold text-right">操作</th>
               </tr>

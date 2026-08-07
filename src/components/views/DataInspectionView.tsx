@@ -57,9 +57,29 @@ export const DataInspectionView: React.FC = () => {
         let passed = 0;
         let flagged = 0;
         const parsedAssets: Asset[] = rows.map((r, idx) => {
-          const eqNo = r['资产主编号'] || r['编目编码'] || `ZC-IMP-${idx + 1}`;
-          const uCode = r['单位代码'] || unitCode;
-          const isErr = uCode !== unitCode || !r['资产名称'];
+          // Flexible key extractor
+          const getKey = (...keys: string[]) => {
+            for (const k of keys) {
+              if (r[k] !== undefined && r[k] !== null && String(r[k]).trim() !== '') {
+                return String(r[k]).trim();
+              }
+            }
+            return '';
+          };
+
+          const eqNo = getKey('资产主编号', '设备编号', '编目编码', '编码', '编号', 'equipment_no', 'code', 'id') || `ZC-IMP-${idx + 1}`;
+          const astName = getKey('资产名称', '设备名称', '名称', 'name', 'asset_name') || '未知设备资产';
+          const uCode = getKey('单位代码', '权属代码', '单位编码', 'unit_code', 'unit') || unitCode;
+          const catName = getKey('设备类型', '资产分类', '分类', 'category') || '通用设备设施';
+          const specModel = getKey('规格型号', '型号', '规格', 'specification_model') || '';
+          const qty = Number(getKey('数量', 'quantity')) || 1;
+          const price = Number(getKey('单价', '金额', 'unit_price')) || 0;
+          const statusVal = getKey('使用状态', '状态', 'status') || '在用';
+          const posVal = getKey('安装位置', '位置', 'install_position') || '';
+          const mfgVal = getKey('生产厂家', '厂家', 'manufacturer') || '';
+          const factCode = getKey('出厂编码', '出厂编号', 'factory_code') || '';
+
+          const isErr = uCode !== unitCode || !astName || astName === '未知设备资产';
           if (isErr) flagged++; else passed++;
           return {
             id: `TMP-${idx + 1}`,
@@ -67,22 +87,22 @@ export const DataInspectionView: React.FC = () => {
             gather_no: eqNo,
             plate_code: `Z$001@${eqNo}`,
             code: eqNo,
-            name: r['资产名称'] || '未知资产',
-            asset_name: r['资产名称'] || '未知资产',
-            category: r['设备类型'] || '通用设备',
+            name: astName,
+            asset_name: astName,
+            category: catName,
             category_id: 1001,
             unit_code: uCode,
-            unit_name: r['管理单位'] || '外部单位',
+            unit_name: getKey('管理单位', '单位名称', 'unit_name') || '外部单位',
             location_id: 'LOC-101',
-            location_name: 'A区罐区',
-            specification_model: r['规格型号'] || '',
-            quantity: Number(r['数量']) || 1,
-            unit_price: Number(r['单价']) || 0,
-            status: r['使用状态'] || '在用',
-            install_position: r['安装位置'] || '',
-            manufacturer: r['生产厂家'] || '',
+            location_name: getKey('安装位置', '场所名称', 'location_name') || '第一储运发油库区',
+            specification_model: specModel,
+            quantity: qty,
+            unit_price: price,
+            status: statusVal,
+            install_position: posVal,
+            manufacturer: mfgVal,
             manager: 'arch1',
-            factory_code: r['出厂编码'] || '',
+            factory_code: factCode,
             vendor_code: '',
             jd_code: '',
             military_asset_code: '',
@@ -91,7 +111,7 @@ export const DataInspectionView: React.FC = () => {
             extend_record_json: '{}',
             is_duplicate: false,
             has_error: isErr,
-            error_msg: isErr ? (uCode !== unitCode ? '越权单位代码 (与当前允许代码不匹配)' : '缺失核心资产名称') : undefined,
+            error_msg: isErr ? (uCode !== unitCode ? '越权单位代码 (与当前允许代码不匹配)' : '缺失核心资产名称字段') : undefined,
             audit_status: 0,
             auditor_name: '',
             audit_opinion: '',

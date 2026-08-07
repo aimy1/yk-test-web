@@ -122,6 +122,15 @@ export const DataMaintenanceView: React.FC = () => {
     }
   };
 
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportData, setReportData] = useState<{
+    fileName: string;
+    total: number;
+    passed: number;
+    errors: number;
+    items: Array<{ rowNum: number; asset: Partial<Asset>; isValid: boolean; errorMsg: string }>;
+  } | null>(null);
+
   const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -132,54 +141,125 @@ export const DataMaintenanceView: React.FC = () => {
         const wb = XLSX.read(bstr, { type: 'binary' });
         const wsName = wb.SheetNames[0];
         const ws = wb.Sheets[wsName];
-        const data = XLSX.utils.sheet_to_json(ws);
-        let imported = 0;
-        for (const item of data as any[]) {
-          await api.saveAsset({
-            id: `AST-IMP-${Math.random().toString().slice(-4)}`,
-            equipment_no: item['资产主编号'] || item['编目编码'] || `ZC-PUMP-${Math.floor(Math.random() * 9000 + 1000)}`,
-            code: item['编目编码'] || item['资产代码'] || `YK-PUMP-2026-${Math.floor(Math.random() * 9000 + 1000)}`,
-            name: item['资产名称'] || '未命名新增设备',
-            asset_name: item['资产名称'] || '未命名新增设备',
-            category: item['设备类型'] || '输油泵类',
-            category_id: 1002,
-            unit_code: 'UNIT-001',
-            unit_name: '第一储运发油库区',
-            location_id: 'LOC-101',
-            location_name: 'A区立式拱顶储罐组',
-            quantity: Number(item['数量']) || 1,
-            unit_price: 10000,
-            status: item['使用状态'] || '在用',
-            install_position: item['安装位置'] || '未指定',
-            manufacturer: item['生产厂家'] || '未填写',
-            manager: 'arch1',
-            factory_code: item['出厂编码'] || 'FC-IMP-99',
-            vendor_code: 'VD-IMP',
-            jd_code: 'JD-IMP',
-            military_asset_code: 'MIL-IMP',
-            prod_date: '2024-01-01',
-            summary: '批量导入设备记录',
-            extend_record_json: '{}',
-            is_duplicate: false,
-            has_error: false,
-            error_msg: undefined,
-            audit_status: 2,
-            auditor_name: 'arch1',
-            audit_opinion: '批量导入自动核验通过',
-            audit_time: '2026-08-01',
-            sync_status: 'synced',
-            source_type: 'import',
-            source: 'Excel导入',
+        const rawRows = XLSX.utils.sheet_to_json(ws) as any[];
+
+        const reportItems: Array<{ rowNum: number; asset: Partial<Asset>; isValid: boolean; errorMsg: string }> = [];
+        let passedCount = 0;
+        let errorCount = 0;
+
+        rawRows.forEach((item, idx) => {
+          const rowNum = idx + 2;
+          const eqNo = item['资产主编号'] || item['编目编码'] || item['设备编号'] || '';
+          const name = item['资产名称'] || item['设备名称'] || '';
+          const category = item['设备类型'] || item['资产分类'] || '输油泵类';
+          
+          let isValid = true;
+          const errors: string[] = [];
+
+          if (!eqNo) {
+            isValid = false;
+            errors.push('缺失【资产主编号/编目编码】');
+          } else if (assets.some((a) => a.equipment_no === eqNo || a.code === eqNo)) {
+            isValid = false;
+            errors.push('防重校验机制提示: 该设备编号与正式库现有编号重复');
+          }
+
+          if (!name) {
+            isValid = false;
+            errors.push('缺失【资产名称】关键必填属性');
+          }
+
+          if (isValid) passedCount++;
+          else errorCount++;
+
+          reportItems.push({
+            rowNum,
+            isValid,
+            errorMsg: errors.join('; ') || '格式校验合格',
+            asset: {
+              id: `AST-IMP-${Math.random().toString().slice(-4)}`,
+              equipment_no: eqNo || `ZC-PUMP-ERR-${rowNum}`,
+              code: eqNo || `YK-ERR-${rowNum}`,
+              name: name || '未命名设备',
+              asset_name: name || '未命名设备',
+              category: category,
+              category_id: 1002,
+              unit_code: 'UNIT-001',
+              unit_name: '第一储运发油库区',
+              location_id: 'LOC-101',
+              location_name: 'A区立式拱顶储罐组',
+              quantity: Number(item['数量']) || 1,
+              unit_price: Number(item['单价']) || 10000,
+              status: item['使用状态'] || '在用',
+              install_position: item['安装位置'] || '现场库区',
+              manufacturer: item['生产厂家'] || '未指定',
+              manager: 'arch1',
+              factory_code: item['出厂编码'] || 'FC-IMP',
+              vendor_code: 'VD-IMP',
+              jd_code: 'JD-IMP',
+              military_asset_code: 'MIL-IMP',
+              prod_date: '2024-01-01',
+              summary: '批量校验导入数据',
+              extend_record_json: '{}',
+              is_duplicate: !isValid,
+              has_error: !isValid,
+              error_msg: errors.join('; '),
+              audit_status: 2,
+              auditor_name: 'arch1',
+              audit_opinion: '文件校验自动核验完成',
+              audit_time: '2026-08-01',
+              sync_status: 'synced',
+              source_type: 'import',
+              source: 'Excel文件导入',
+            },
           });
-          imported++;
-        }
-        alert(`根据模板成功批量导入 ${imported} 条记录！`);
-        loadAssets();
+        });
+
+        setReportData({
+          fileName: file.name,
+          total: rawRows.length,
+          passed: passedCount,
+          errors: errorCount,
+          items: reportItems,
+        });
+        setShowReportModal(true);
       } catch (err) {
-        alert('读取 Excel 文件格式错误！');
+        alert('读取 Excel 文件格式错误或读取失败！');
       }
     };
     reader.readAsBinaryString(file);
+  };
+
+  const handleSyncReportData = async () => {
+    if (!reportData) return;
+    const validItems = reportData.items.filter((i) => i.isValid);
+    if (validItems.length === 0) return alert('当前校验结果中无合格记录可同步入库！');
+
+    let synced = 0;
+    for (const item of validItems) {
+      await api.saveAsset(item.asset);
+      synced++;
+    }
+
+    alert(`🎉 校验通过！成功将 ${synced} 条合格资产数据一键同步入库！`);
+    setShowReportModal(false);
+    loadAssets();
+  };
+
+  const handleExportValidationReport = () => {
+    if (!reportData) return;
+    const exportRows = reportData.items.map((i) => ({
+      'Excel行号': i.rowNum,
+      '资产主编号': i.asset.equipment_no,
+      '资产名称': i.asset.asset_name,
+      '设备分类': i.asset.category,
+      '校验结果': i.isValid ? '通过' : '未通过',
+      '详细校验意见与错误原因': i.errorMsg,
+    }));
+    const ws = XLSX.utils.json_to_sheet(exportRows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "数据校验报告");
+    XLSX.writeFile(wb, `数据校验报告_${reportData.fileName}_${Date.now()}.xlsx`);
   };
 
   const filteredAssets = assets.filter((a) => {
@@ -341,11 +421,6 @@ export const DataMaintenanceView: React.FC = () => {
             <thead className="bg-slate-50/80 text-slate-500 border-b border-slate-200">
               <tr>
                 <th className="p-3.5 font-semibold">校验状态</th>
-                <th className="p-3.5 font-semibold">资产主编号</th>
-                <th className="p-3.5 font-semibold">资产名称</th>
-                <th className="p-3.5 font-semibold">设备分类</th>
-                <th className="p-3.5 font-semibold">安装位置</th>
-                <th className="p-3.5 font-semibold">使用状态</th>
                 <th className="p-3.5 font-semibold">生产厂家</th>
                 <th className="p-3.5 font-semibold">出厂编码</th>
                 <th className="p-3.5 font-semibold">数据来源</th>
@@ -493,6 +568,17 @@ export const DataMaintenanceView: React.FC = () => {
               </div>
 
               <div>
+                <label className="text-slate-700 block mb-1 font-semibold">权属单位代码</label>
+                <input
+                  type="text"
+                  value={formData.unit_code || 'UNIT-001'}
+                  onChange={(e) => setFormData({ ...formData, unit_code: e.target.value })}
+                  placeholder="如: UNIT-001"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 font-mono"
+                />
+              </div>
+
+              <div>
                 <label className="text-slate-700 block mb-1 font-semibold">生产厂家</label>
                 <input
                   type="text"
@@ -566,6 +652,115 @@ export const DataMaintenanceView: React.FC = () => {
               >
                 保存资产
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Validation Report Modal */}
+      {showReportModal && reportData && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-2xl p-6 max-w-4xl w-full border border-slate-200 shadow-xl space-y-4 max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-blue-600" />
+                  Excel 资产数据校验报告 ({reportData.fileName})
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  全量校验规则引擎已对文件数据检索比对：总数 {reportData.total} 条，校验通过 {reportData.passed} 条，异常记录 {reportData.errors} 条。
+                </p>
+              </div>
+              <button
+                onClick={() => setShowReportModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold text-lg px-2"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Validation Metrics Summary */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl text-center">
+                <span className="text-xs text-slate-500 font-semibold block">总读取数据数</span>
+                <span className="text-lg font-bold text-slate-900 font-mono">{reportData.total} 条</span>
+              </div>
+              <div className="p-3 bg-emerald-50 border border-emerald-200/80 rounded-xl text-center">
+                <span className="text-xs text-emerald-600 font-semibold block">合格通过可入库</span>
+                <span className="text-lg font-bold text-emerald-700 font-mono">{reportData.passed} 条</span>
+              </div>
+              <div className="p-3 bg-rose-50 border border-rose-200/80 rounded-xl text-center">
+                <span className="text-xs text-rose-600 font-semibold block">拦截异常记录数</span>
+                <span className="text-lg font-bold text-rose-700 font-mono">{reportData.errors} 条</span>
+              </div>
+            </div>
+
+            {/* Validation Detailed Items Table */}
+            <div className="flex-1 overflow-y-auto border border-slate-200 rounded-xl">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-500 sticky top-0 border-b border-slate-200">
+                  <tr>
+                    <th className="p-3 font-semibold w-16">行号</th>
+                    <th className="p-3 font-semibold">设备主编号</th>
+                    <th className="p-3 font-semibold">资产名称</th>
+                    <th className="p-3 font-semibold">分类</th>
+                    <th className="p-3 font-semibold">校验结论</th>
+                    <th className="p-3 font-semibold">校验说明与建议</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-mono">
+                  {reportData.items.map((item) => (
+                    <tr key={item.rowNum} className={item.isValid ? 'hover:bg-slate-50' : 'bg-rose-50/40 hover:bg-rose-50/80'}>
+                      <td className="p-3 font-bold text-slate-500">#{item.rowNum}</td>
+                      <td className="p-3 font-bold text-slate-900">{item.asset.equipment_no || '-'}</td>
+                      <td className="p-3 font-sans font-semibold text-slate-800">{item.asset.asset_name || '-'}</td>
+                      <td className="p-3 font-sans text-slate-600">{item.asset.category}</td>
+                      <td className="p-3 font-sans">
+                        {item.isValid ? (
+                          <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold text-[11px]">
+                            ✅ 校验通过
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 font-bold text-[11px]">
+                            ❌ 格式/防重异常
+                          </span>
+                        )}
+                      </td>
+                      <td className={`p-3 font-sans ${item.isValid ? 'text-slate-500' : 'text-rose-700 font-semibold'}`}>
+                        {item.errorMsg}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Action Bar */}
+            <div className="flex justify-between items-center pt-3 border-t border-slate-100">
+              <button
+                onClick={handleExportValidationReport}
+                className="px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold border border-slate-200 flex items-center gap-2 shadow-2xs"
+              >
+                <Download className="w-4 h-4 text-blue-600" />
+                导出校验报告 (.xlsx)
+              </button>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowReportModal(false)}
+                  className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-semibold"
+                >
+                  关闭
+                </button>
+                <button
+                  onClick={handleSyncReportData}
+                  disabled={reportData.passed === 0}
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white rounded-xl text-xs font-semibold shadow-2xs flex items-center gap-1.5"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  一键同步合格数据到正式库 ({reportData.passed} 条)
+                </button>
+              </div>
             </div>
           </div>
         </div>
