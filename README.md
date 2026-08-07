@@ -1,126 +1,107 @@
-# 油库资产数据采集与管理系统 - 前端控制台 (Web Console)
+# 油库资产数据采集与管理系统 - PC 管理 Web 端 (yk-test-web)
 
-![React](https://img.shields.io/badge/Frontend-React_18-61DAFB.svg?style=for-the-badge&logo=react)
-![TypeScript](https://img.shields.io/badge/Language-TypeScript_5-3178C6.svg?style=for-the-badge&logo=typescript)
-![Vite](https://img.shields.io/badge/Build_Tool-Vite_6-646CFF.svg?style=for-the-badge&logo=vite)
-![TailwindCSS](https://img.shields.io/badge/Styling-TailwindCSS_3-06B6D4.svg?style=for-the-badge&logo=tailwindcss)
-![License](https://img.shields.io/badge/License-Proprietary-red.svg?style=for-the-badge)
-
-本仓库为 **油库资产数据采集与管理系统** 的现代化 Web 控制台前端项目，基于 **React 18**、**TypeScript**、**Vite 6** 与 **TailwindCSS** 打造，提供 19 个独立且完整的功能视图模块，涵盖临时库校验、外接库对接比对、数据维护排重纠错、单级审核工作流、真实二维码生成与离线打印、以及多单位权限隔离。
+本项目是油库资产数据采集与管理系统的 PC 端 Web 管理控制台，基于 **React 18**、**TypeScript**、**Vite 6** 与 **Tailwind CSS** 构建。系统提供 11 大核心功能模块，涵盖资产全生命周期维护、异构 Excel 导入清洗、数据质量核查大盘、3D 彩码可视化渲染与打印导出、编码规则配置、单位隔离与审计日志。
 
 ---
 
-## 核心视觉与交互特色
+## 技术栈与依赖
 
-- **极致工业玻璃拟物美学 (Modern Industrial Glassmorphism)**：采用极简高对比度调色盘、毛玻璃背景模糊、平滑过渡动画与统一设计 Token。
-- **真实 ISO/IEC 18004 二维码与铭牌排版引擎**：基于 `qrcode` 库在前端实时生成 100% 可扫码 ISO 标准二维码，支持 Ex 工业防爆铭牌与 JD 模式切换，完美适配 `@media print` 高清标签打印。
-- **可视化统计大屏看板**：内置 ECharts 图表，实时呈现油库设备资产统计、自动编码率、分类占比与资产运行状态分布。
-- **实时 Excel 导入与解析引擎**：集成 `xlsx` 库，支持批量导入资产文件、字段匹配与全量导出。
-- **持久化 Session 机制 (`localStorage`)**：登录凭证自动加密留存，F5 刷新页面无感保持当前操作上下文与单位隔离。
-- **扩展属性与编码规则引擎 Modal**：前端与后端属性模板同步，支持自定义设计容量、油品/介质类型等扩展字段编辑。
-
----
-
-## 19 大核心功能视图模块
-
-1. **数据检查 (临时库)**：支持拖拽上传真实 Excel 数据包，自动检测格式与权属代码并导出问题清单。
-2. **数据接收 (外接库)**：模拟接收上级 JD 资产系统推送及 APP 现场采集设备增量同步。
-3. **外接库资产入库**：外接数据与正式库横/纵向比对（变动高亮），支持勾选批量入库。
-4. **数据维护 (排重纠错)**：全量资产表单、一键规则生成编号、重复/异常标红高亮与逻辑删除。
-5. **单级审核管理**：草稿 -> 待审核 -> 通过/退回状态机流转与审计历史记录追踪。
-6. **数据查询统计**：组合关键字、分类、使用状态高级检索与 Excel 导出。
-7. **数据导出与接口**：资产数据包 JSON 格式导出与在线 REST API 测试控制台。
-8. **单位管理**：油库从属关系树、电话检索、多套单位代码映射 (`mappings`) 绑定。
-9. **场所管理**：油库内部场所从属树、安全阻断防护式删除（若存在依赖资产则拦截）。
-10. **扩展属性配置**：按设备分类配置必填/类型/值域，与后端 `save_asset` Handler 强制校验联动。
-11. **编码规则**：规则前缀一键测试生成、规则列表导出。
-12. **数据字典**：字典类型、标签、键值 CRUD 维护。
-13. **标签标牌 (二维码)**：真实 ISO/IEC 18004 扫码标贴，支持高清缩放预览与打印排版。
-14. **统计大屏看板**：资产总数、编码率、直方图、饼图、折线图可视化呈现。
-15. **移动终端管理**：防爆手持终端备案与单位绑定。
-16. **用户管理**：系统账号 CRUD、真实密码展示、单位代码隔离。
-17. **系统日志审计**：日志检索、按条删除、一键高危清空与 Excel 导出。
-18. **App 移动采集端引擎**：3D 色彩码生成与识别解包模拟。
-19. **系统登录页面**：真实 SQLite 数据库账号密码鉴权登录。
+- **前端框架**: React 18 (`react`, `react-dom`)
+- **开发语言**: TypeScript 5
+- **构建工具**: Vite 6 (支持极速 HMR 模块热替换)
+- **样式与布局**: Tailwind CSS + Vanilla CSS Token 设计系统
+- **图表组件**: ECharts 5 (渲染编码进度、合规率与类型占比直方图/饼图)
+- **数据工具**: SheetJS (`xlsx`) 解析与导出 Excel 电子表格；`qrcode` 渲染 ISO/IEC 18004 矢量二维码
 
 ---
 
-## 技术栈与依赖库
+## 11 大核心功能视图模块
 
-| 依赖库 (Package) | 版本 | 说明 |
-| :--- | :--- | :--- |
-| **`react` / `react-dom`** | `^18.3.1` | 前端UI核心框架 |
-| **`typescript`** | `^5.6.3` | 全局类型安全保障 |
-| **`vite`** | `^6.2.0` | 极速前端构建工具 |
-| **`lucide-react`** | `^0.475.0` | 现代 Icon 图标库 |
-| **`echarts`** | `^5.6.0` | 工业级可视化图表渲染 |
-| **`qrcode`** | `^1.5.4` | 规范二维码 DataURL 渲染 |
-| **`xlsx`** | `^0.18.5` | 电子表格解析与生成工具 |
+1. **资产全生命周期维护 (`DataMaintenanceView`)**:
+   - 资产列表多维度筛选（关键字搜索、设备分类过滤、运行状态筛选、单位隔离切换）。
+   - 交互式列头排序：点击属性列标头直接触发正序/倒序排列。
+   - 资产新增与编辑 Modal 弹窗，支持 `unit_code` 校验与在线提交。
+2. **分类与扩展属性管理 (`CategoryManagementView`)**:
+   - 维护资产大类、中类、小类树。
+   - 配置小类专属的扩展属性校验模板（如油罐容量、泵体扬程）。
+3. **外部数据清洗与导入 (`DataInspectionView`)**:
+   - 上传外部 Excel (.xlsx) / JSON 资产数据包。
+   - 智能列名模糊匹配算法（兼容“设备名称/资产名称”、“设备编号/资产编号”等多种名称）。
+   - 异常数据标注：对重复编号标记 `is_duplicate = true` 标红警告，对属性缺失标记 `has_error = true` 标黄提示。
+   - 勾选记录确认修改后，通过后端数据库事务提交入库。
+4. **数据质量核查与报告 (`QualityCheckView`)**:
+   - 运行全库质量扫描引擎，评估资产完整性、唯一性与规范性。
+   - 生成数据质量诊断分析大盘。
+5. **3D 彩码与电子标签管理 (`ColorCodeView`)**:
+   - 在线可视化渲染 8x8 四色阵列三维彩码。
+   - 模拟摄像头取景解码与 Payload 逆向解析。
+   - 矢量图导出与标签打印预览。
+6. **数据导出与上级 API 接入 (`DataExportApiView`)**:
+   - 一键打包导出 YOUK_ASSET_PACKAGE 标准格式数据包。
+   - 上级系统（网格化平台/JD 管理系统）Push / Pull 数据对接测试控制台。
+7. **单位隔离与权限管控 (`UnitIsolationView`)**:
+   - 多油库单位树形架构管理（第一储运发油库区、第二管道输油车间等）。
+   - 用户角色与单位归属强绑定，防止跨单位越权修改。
+8. **操作审计与事件穿透 (`AuditLogView`)**:
+   - 全量操作审计日志穿透查看。
+   - 支持按操作人、操作动作（登录、采集、同步、导入）及 IP 地址筛选检索。
+9. **系统综合控制大盘 (`DashboardView`)**:
+   - 油库资产总量、在线设备数、待审核草稿数与数据合规率 KPI 卡片。
+10. **移动端同步与冲突处理 (`MobileSyncView`)**:
+    - 监控 PDA 暂存上传的草稿队列。
+    - 解决离线草稿与云端数据冲突。
+11. **系统设置与服务监控 (`SystemSettingsView`)**:
+    - 数据库物理备份日志与后端 REST API 3001 端口健康监测。
 
 ---
 
-## 项目结构说明
+## 项目目录结构说明
 
 ```text
-web/
-├── public/
-│   ├── logo.png          # 系统专属 Logo (包含浏览器 Tab Favicon)
-│   └── favicon.png       # 页面图标
-├── src/
-│   ├── main.tsx          # 前端应用入口
-│   ├── App.tsx           # 主框架路由、全局 Session、Toast 提示管理
-│   ├── index.css         # TailwindCSS 指令与全局设计 Token
-│   ├── types/            # TypeScript 全局接口与数据结构定义
-│   ├── services/
-│   │   └── api.ts        # REST API 异步 Fetch 服务封装
-│   └── components/
-│       ├── Header.tsx    # 系统顶部导航栏 (包含用户 Profile 与数据刷新)
-│       ├── Sidebar.tsx   # 侧边栏 19 大模块无障碍导航
-│       └── views/        # 19 个独立视图组件
-│           ├── DataInspectionView.tsx
-│           ├── QrCodeLabelsView.tsx
-│           ├── DataMaintenanceView.tsx
-│           ├── AnalyticsDashboardView.tsx
-│           ├── UserManagementView.tsx
-│           └── ... (全量 19 个视图组件)
-├── package.json          # 项目依赖与运行脚本
-└── vite.config.ts        # Vite 开发服务器与代理配置
+src/
+├── App.tsx                   # 应用主入口、路由切换与全局 State
+├── main.tsx                  # React 挂载点
+├── index.css                 # 全局样式与 Tailwind CSS 指令
+├── components/
+│   ├── Header.tsx            # 系统顶部导航栏 (账号切换与网络状态)
+│   ├── Sidebar.tsx           # 侧边栏 11 大功能视图导航
+│   └── views/                # 11 个业务视图组件
+│       ├── DataMaintenanceView.tsx   # 资产全生命周期维护
+│       ├── DataInspectionView.tsx    # 外部 Excel 导入与清洗
+│       ├── CategoryManagementView.tsx# 分类与扩展属性模板
+│       ├── ColorCodeView.tsx         # 3D 彩码与标签打印
+│       ├── DataExportApiView.tsx     # 数据导出与上级 API
+│       ├── UnitIsolationView.tsx     # 单位隔离与权限管理
+│       ├── AuditLogView.tsx          # 系统操作审计日志
+│       └── ...
+└── services/
+    └── api.ts                # REST API 通信模块 (对齐 3001 端口)
 ```
 
 ---
 
-## 本地开发与构建
+## 本地开发与运行指南
 
 ### 1. 安装依赖
+需确保已安装 Node.js (v18+) 与 npm：
 ```bash
-cd web
+# 进入前端 Web 目录
+cd yk-test-web-main
+
+# 安装依赖项
 npm install
 ```
 
 ### 2. 启动开发服务器
 ```bash
-# 默认服务启动在 http://localhost:5173
+# 启动 Vite 开发服务器 (默认端口 5173)
 npm run dev
 ```
+打开浏览器访问 `http://localhost:5173` 即可进入 PC 管理控制台。
 
-### 3. 生产环境构建
+### 3. 构建生产打包产物
 ```bash
-# 执行 TypeScript 校验与 Vite 生产打包
+# 构建 release 静态资源包
 npm run build
 ```
-
-构建完成后，编译产物将存放在 `dist/` 目录中。
-
----
-
-## 默认测试登录账号
-
-- **账号**：`admin`
-- **密码**：`admin123`
-- **显示昵称**：`arch1`
-
----
-
-## 版权与许可声明 (Proprietary)
-
-本项目为 **私有专有软件 (Proprietary Software)**，不采用开源协议。未经版权所有者书面授权，禁止任何形式的商业分发、公开复制代码或二次开源。
+构建产物输出至 `dist/` 目录，可直接交由 Nginx 托管。
