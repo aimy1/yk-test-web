@@ -125,7 +125,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
     { id: 'terminal' as ModuleId, label: '移动终端管理', icon: Smartphone },
     { id: 'user' as ModuleId, label: '用户与角色管理', icon: Users },
     { id: 'log' as ModuleId, label: '系统日志审计', icon: FileText },
-    { id: 'app_mobile' as ModuleId, label: 'App 移动采集端引擎', icon: Smartphone },
   ].filter(m => hasModulePermission(userRole, m.id));
 
 
