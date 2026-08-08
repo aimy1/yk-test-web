@@ -15,7 +15,8 @@ export const AuditLogsView: React.FC = () => {
   const loadLogs = async () => {
     try {
       const data = await api.getLogs();
-      setLogs(data);
+      const list = Array.isArray(data) ? data : (data?.logs || data?.items || []);
+      setLogs(list);
     } catch (err) {
       console.error(err);
     }
@@ -65,17 +66,31 @@ export const AuditLogsView: React.FC = () => {
     XLSX.writeFile(wb, "油库资产数据采集系统操作日志.xlsx");
   };
 
-  const filtered = logs.filter(l => {
-    const isAppLog = l.action.startsWith('APP') || l.operator.includes('APP') || l.details.includes('APP') || l.details.includes('移动') || l.details.includes('防爆');
-    const matchKw = l.operator.includes(searchTerm) || l.action.includes(searchTerm) || l.ip.includes(searchTerm) || l.details.includes(searchTerm);
+  const isAppLog = (l: AuditLog) => {
+    if (!l) return false;
+    const act = l.action || '';
+    const op = l.operator || '';
+    const det = l.details || '';
+    return act.startsWith('APP') || op.includes('APP') || det.includes('APP') || det.includes('移动') || det.includes('防爆') || det.includes('手持');
+  };
 
-    if (actionFilter === 'APP') return matchKw && isAppLog;
-    if (actionFilter === 'PC') return matchKw && !isAppLog;
+  const filtered = logs.filter(l => {
+    if (!l) return false;
+    const appFlag = isAppLog(l);
+    const kw = (searchTerm || '').trim().toLowerCase();
+    const matchKw = !kw || 
+      (l.operator || '').toLowerCase().includes(kw) || 
+      (l.action || '').toLowerCase().includes(kw) || 
+      (l.ip || '').toLowerCase().includes(kw) || 
+      (l.details || '').toLowerCase().includes(kw);
+
+    if (actionFilter === 'APP') return matchKw && appFlag;
+    if (actionFilter === 'PC') return matchKw && !appFlag;
     const matchAction = actionFilter === 'ALL' || l.action === actionFilter;
     return matchKw && matchAction;
   });
 
-  const appLogsCount = logs.filter(l => l.action.startsWith('APP') || l.operator.includes('APP') || l.details.includes('APP') || l.details.includes('移动') || l.details.includes('防爆')).length;
+  const appLogsCount = logs.filter(isAppLog).length;
 
   const totalLogs = filtered.length;
   const totalPages = Math.max(1, Math.ceil(totalLogs / pageSize));
