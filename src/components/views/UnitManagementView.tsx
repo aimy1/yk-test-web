@@ -417,64 +417,98 @@ export const UnitManagementView: React.FC = () => {
         </div>
       )}
 
-      {/* Unit Edit / Create Modal */}
+      {/* Unit Edit / Create Modal - Completely Redesigned */}
       {showModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 w-full max-w-lg space-y-4 shadow-xl text-xs">
-            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-blue-600" />
-                {formData.code ? `维护自定义单位 [${formData.name || formData.code}]` : '新增自定义单位架构节点'}
-              </h3>
-              <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600 font-bold">✕</button>
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white border border-slate-200/90 rounded-3xl p-6 w-full max-w-xl space-y-5 shadow-2xl text-xs relative overflow-hidden">
+            {/* Header */}
+            <div className="flex justify-between items-center pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-2xs">
+                  <Building2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    {formData.code ? `编辑单位节点 [${formData.name || formData.code}]` : '创建新自定义单位架构节点'}
+                  </h3>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    维护单位身份、定义上下级树形挂载从属链，以及多套异构系统代码映射。
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowModal(false)}
+                className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-600 flex items-center justify-center font-bold text-xs transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
             </div>
 
-            <div className="space-y-3.5">
-              {/* Section 1: Base Identity */}
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 space-y-2">
-                <span className="font-bold text-slate-800 block text-[11px]">① 基础身份信息</span>
-                <div className="grid grid-cols-2 gap-2">
+            {/* Live Hierarchy Path Preview Banner */}
+            <div className="bg-linear-to-r from-blue-50/90 to-indigo-50/90 border border-blue-200/70 p-3 rounded-2xl flex items-center justify-between text-[11px] text-slate-800 shadow-2xs">
+              <div className="flex items-center gap-2 overflow-x-auto font-medium">
+                <span className="font-bold text-blue-700 shrink-0 flex items-center gap-1">
+                  <GitBranch className="w-3.5 h-3.5" />
+                  架构挂载路径:
+                </span>
+                <span className="text-slate-600">
+                  {!formData.parent_code
+                    ? '🌐 [根节点 / 顶级单位]'
+                    : `${units.find((u) => u.code === formData.parent_code)?.name || formData.parent_code} (Level ${
+                        units.find((u) => u.code === formData.parent_code)?.level || 1
+                      })`}
+                </span>
+                <span className="text-slate-400 font-bold">➔</span>
+                <span className="font-bold text-blue-900 bg-white px-2.5 py-1 rounded-lg border border-blue-200 shadow-2xs">
+                  📍 {formData.name || formData.code || '新单位'} (Level {formData.level || 1} • {formData.level_name || '自定义层级'})
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {/* Card 1: Identity & Parent Relationship */}
+              <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200/70 space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-slate-800 text-[11px] flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+                    ① 基础身份与上级从属关系 (决定组织树)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsCustomParentInput(!isCustomParentInput)}
+                    className="text-[10px] text-blue-600 hover:text-blue-800 font-bold underline cursor-pointer"
+                  >
+                    {isCustomParentInput ? '📋 切换为下拉选择模式' : '✍️ 切换为手写自定义上级编码'}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-slate-600 block mb-1 font-semibold text-[10px]">自定义单位编码 *</label>
+                    <label className="text-slate-700 block mb-1 font-semibold text-[10px]">自定义单位编码 *</label>
                     <input
                       type="text"
                       value={formData.code}
                       onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                       placeholder="如: UNIT-001"
-                      className="w-full bg-white border border-slate-200 rounded-lg p-2 text-slate-900 font-mono"
+                      className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 font-mono text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                     />
                   </div>
                   <div>
-                    <label className="text-slate-600 block mb-1 font-semibold text-[10px]">自定义单位名称 *</label>
+                    <label className="text-slate-700 block mb-1 font-semibold text-[10px]">自定义单位名称 *</label>
                     <input
                       type="text"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       placeholder="如: 华东大区发油储运总库"
-                      className="w-full bg-white border border-slate-200 rounded-lg p-2 text-slate-900 font-bold"
+                      className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 font-bold text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                     />
                   </div>
                 </div>
-              </div>
 
-              {/* Section 2: Hierarchy & Custom Level Titles */}
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 space-y-2.5">
-                <div className="flex justify-between items-center">
-                  <span className="font-bold text-slate-800 block text-[11px]">② 组织从属关系与体系定义 (自定义构建树形结构)</span>
-                  <button
-                    type="button"
-                    onClick={() => setIsCustomParentInput(!isCustomParentInput)}
-                    className="text-[10px] text-blue-600 hover:text-blue-800 font-semibold underline cursor-pointer"
-                  >
-                    {isCustomParentInput ? '切换为下拉选择模式' : '切换为手写自定义上级编码'}
-                  </button>
-                </div>
-                
                 <div>
-                  <label className="text-slate-600 block mb-1 font-semibold text-[10px]">
-                    上级从属单位编码 (决定树形结构)
+                  <label className="text-slate-700 block mb-1 font-semibold text-[10px]">
+                    上级从属单位编码 (决定在组织树中的上级节点)
                   </label>
-                  
                   {isCustomParentInput ? (
                     <input
                       type="text"
@@ -484,19 +518,19 @@ export const UnitManagementView: React.FC = () => {
                         setFormData({
                           ...formData,
                           parent_code: val,
-                          level: val ? (formData.level || 2) : 1,
+                          level: val ? formData.level || 2 : 1,
                         });
                       }}
-                      placeholder="自由输入自定义上级单位代码，如: GRP-ROOT / DEPOT-01"
-                      className="w-full bg-white border border-blue-300 rounded-lg p-2 text-slate-900 font-mono text-xs focus:ring-1 focus:ring-blue-500"
+                      placeholder="自由手写填入自定义上级代码，如: UNIT-ROOT / DEPOT-01"
+                      className="w-full bg-white border border-blue-300 rounded-xl p-2.5 text-slate-900 font-mono text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                     />
                   ) : (
                     <select
                       value={formData.parent_code || ''}
                       onChange={(e) => {
                         const parentCode = e.target.value;
-                        const parentUnit = units.find(u => u.code === parentCode);
-                        const newLevel = !parentCode ? 1 : ((parentUnit?.level || 1) + 1);
+                        const parentUnit = units.find((u) => u.code === parentCode);
+                        const newLevel = !parentCode ? 1 : (parentUnit?.level || 1) + 1;
                         setFormData({
                           ...formData,
                           parent_code: parentCode,
@@ -504,9 +538,9 @@ export const UnitManagementView: React.FC = () => {
                           level_name: formData.level_name || (!parentCode ? '顶级单位' : '从属单位'),
                         });
                       }}
-                      className="w-full bg-white border border-slate-200 rounded-lg p-2 text-slate-900 font-semibold text-xs"
+                      className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 font-semibold text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                     >
-                      <option value="">-- 无上级 (设为顶级/根节点单位) --</option>
+                      <option value="">-- 无上级 (设置为 L1 顶级/根节点单位) --</option>
                       {units
                         .filter((u) => u.code !== formData.code)
                         .map((u) => (
@@ -517,40 +551,48 @@ export const UnitManagementView: React.FC = () => {
                     </select>
                   )}
                 </div>
+              </div>
 
-                <div className="grid grid-cols-2 gap-2">
+              {/* Card 2: Custom Hierarchy Level & Titles */}
+              <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200/70 space-y-3">
+                <span className="font-bold text-slate-800 text-[11px] flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
+                  ② 自定义体系称谓与架构层级 (Level)
+                </span>
+
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-slate-600 block mb-1 font-semibold text-[10px]">架构数字层级 (Level)</label>
+                    <label className="text-slate-700 block mb-1 font-semibold text-[10px]">架构数字层级 (Level)</label>
                     <input
                       type="number"
                       min={1}
                       max={10}
                       value={formData.level || 1}
                       onChange={(e) => setFormData({ ...formData, level: Number(e.target.value) || 1 })}
-                      className="w-full bg-white border border-slate-200 rounded-lg p-2 text-slate-900 font-mono"
+                      className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 font-mono text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                     />
                   </div>
                   <div>
-                    <label className="text-slate-600 block mb-1 font-semibold text-[10px]">自定义层级/体系称谓 *</label>
+                    <label className="text-slate-700 block mb-1 font-semibold text-[10px]">自定义体系/层级称谓 *</label>
                     <input
                       type="text"
                       value={formData.level_name || ''}
                       onChange={(e) => setFormData({ ...formData, level_name: e.target.value })}
-                      placeholder="自由输入自定义称谓，如: 华东事业部 / 质检班组"
-                      className="w-full bg-white border border-slate-200 rounded-lg p-2 text-slate-900 font-semibold"
+                      placeholder="如: 华东仓储事业部 / 发油班组"
+                      className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 font-semibold text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                     />
                   </div>
                 </div>
 
-                {/* Quick Preset Tags for Custom Level Names */}
-                <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                  <span className="text-slate-400 text-[10px]">快捷常用称谓:</span>
-                  {['集团/总公司', '分公司/事业部', '发油油库/库区', '车间/作业班组', '特种仓储部', '质检中心'].map((tag) => (
+                {/* Quick Preset Title Chips */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                  <span className="text-slate-400 text-[10px] font-medium">快捷常用称谓:</span>
+                  {['集团/总公司', '分公司/事业部', '发油油库/库区', '车间/作业班组', '特种仓储部', '质检实验室'].map((tag) => (
                     <button
                       key={tag}
                       type="button"
                       onClick={() => setFormData({ ...formData, level_name: tag })}
-                      className="px-2 py-0.5 bg-white hover:bg-slate-200/80 border border-slate-200 rounded text-[10px] text-slate-600 transition-colors"
+                      className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 hover:border-slate-300 rounded-lg text-[10px] text-slate-700 font-semibold transition-all active:scale-95 cursor-pointer shadow-2xs"
                     >
                       {tag}
                     </button>
@@ -558,52 +600,63 @@ export const UnitManagementView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Section 3: Manager & Multi-System Mappings */}
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 space-y-2">
-                <span className="font-bold text-slate-800 block text-[11px]">③ 负责人与多套系统代码映射</span>
-                
-                <div className="grid grid-cols-2 gap-2">
+              {/* Card 3: Manager & Multi-System Mappings */}
+              <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200/70 space-y-3">
+                <span className="font-bold text-slate-800 text-[11px] flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
+                  ③ 责任人与外部多套异构系统代码映射
+                </span>
+
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-slate-600 block mb-1 font-semibold text-[10px]">单位责任人</label>
+                    <label className="text-slate-700 block mb-1 font-semibold text-[10px]">单位责任人</label>
                     <input
                       type="text"
                       placeholder="负责人姓名"
                       value={formData.manager}
                       onChange={(e) => setFormData({ ...formData, manager: e.target.value })}
-                      className="w-full bg-white border border-slate-200 rounded-lg p-2 text-slate-900"
+                      className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                     />
                   </div>
                   <div>
-                    <label className="text-slate-600 block mb-1 font-semibold text-[10px]">联系电话</label>
+                    <label className="text-slate-700 block mb-1 font-semibold text-[10px]">联系电话</label>
                     <input
                       type="text"
                       placeholder="联系电话"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="w-full bg-white border border-slate-200 rounded-lg p-2 text-slate-900 font-mono"
+                      className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 font-mono text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-slate-600 block mb-1 font-semibold text-[10px]">外部异构代码映射 (逗号隔开)</label>
+                  <label className="text-slate-700 block mb-1 font-semibold text-[10px]">外部异构代码映射 (逗号隔开)</label>
                   <input
                     type="text"
                     value={mappingInput}
                     onChange={(e) => setMappingInput(e.target.value)}
                     placeholder="如: ERP-DEPOT-88, MIL-UNIT-01"
-                    className="w-full bg-white border border-slate-200 rounded-lg p-2 text-slate-900 font-mono"
+                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 font-mono text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-end space-x-2.5 pt-3 border-t border-slate-100">
-              <button onClick={() => setShowModal(false)} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl font-semibold">
+            {/* Actions Footer */}
+            <div className="flex justify-end space-x-3 pt-3 border-t border-slate-100">
+              <button
+                onClick={() => setShowModal(false)}
+                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold text-xs transition-colors cursor-pointer"
+              >
                 取消
               </button>
-              <button onClick={handleSave} className="px-4 py-2 bg-slate-900 text-white rounded-xl font-semibold shadow-xs">
-                保存自定义单位
+              <button
+                onClick={handleSave}
+                className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+              >
+                <Building2 className="w-4 h-4 text-blue-400" />
+                保存单位节点
               </button>
             </div>
           </div>
