@@ -410,30 +410,34 @@ export const DataMaintenanceView: React.FC = () => {
     XLSX.writeFile(wb, `油库全量资产档案明细表_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
+  const complianceRate = assets.length > 0
+    ? Math.round(((assets.length - dupCount - errCount) / assets.length) * 100)
+    : 100;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Title Header */}
-      <div className="bg-white/90 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 shadow-2xs flex flex-wrap justify-between items-center gap-3">
+      <div className="bg-white/80 backdrop-blur-xl p-5 rounded-2xl border border-slate-200/70 shadow-xs flex flex-wrap justify-between items-center gap-3 transition-all">
         <div>
-          <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+          <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2 tracking-tight">
             <Database className="w-5 h-5 text-blue-600" />
-            数据维护与设备维保管理 (含排重与自动消错引擎)
+            数据维护与设备维保中心
           </h2>
           <p className="text-xs text-slate-500 mt-1">
             提供油库设备设施数据的全属性维护、维保履历归档、批量操作及 Excel 导入导出；规则引擎全库排重纠错并对重复重号支持一键自动打补丁修正。
           </p>
         </div>
 
-        <div className="flex flex-wrap space-x-2.5">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={handleExportFullAssetsExcel}
-            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs cursor-pointer transition-all active:scale-95"
+            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-all active:scale-95 cursor-pointer"
           >
             <Download className="w-4 h-4" />
             导出 Excel 报表
           </button>
 
-          <label className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold border border-slate-200 cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95">
+          <label className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold border border-slate-200/80 cursor-pointer flex items-center gap-1.5 shadow-2xs transition-all active:scale-95">
             <Upload className="w-4 h-4 text-blue-600" />
             批量导入 Excel
             <input type="file" accept=".xlsx, .xls" onChange={handleImportExcel} className="hidden" />
@@ -441,18 +445,18 @@ export const DataMaintenanceView: React.FC = () => {
 
           <button
             onClick={handleRunAnalyze}
-            className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs active:scale-95"
+            className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-all active:scale-95"
           >
             <AlertCircle className="w-4 h-4" />
-            排重纠错检测
+            排重与纠错检测
           </button>
 
           <button
             onClick={handleAutoFixDuplicates}
-            className="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs active:scale-95"
+            className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-all active:scale-95"
             title="一键自动为所有重复资产重编编号并消除重复标红"
           >
-            <CheckCircle2 className="w-4 h-4 text-purple-200" />
+            <CheckCircle2 className="w-4 h-4 text-indigo-200" />
             一键自动重编消错
           </button>
 
@@ -497,11 +501,54 @@ export const DataMaintenanceView: React.FC = () => {
               });
               setShowModal(true);
             }}
-            className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs active:scale-95"
+            className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-all active:scale-95"
           >
             <Plus className="w-4 h-4" />
             新增设备设施
           </button>
+        </div>
+      </div>
+
+      {/* Modern Top Metric Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white/80 backdrop-blur-xl p-4 rounded-2xl border border-slate-200/70 shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-between">
+          <div>
+            <span className="text-[11px] font-semibold text-slate-400 block">全量台账设备</span>
+            <span className="text-2xl font-extrabold text-slate-900 font-mono mt-0.5 block">{assets.length} <span className="text-xs font-normal text-slate-400">台/套</span></span>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
+            <Database className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="bg-white/80 backdrop-blur-xl p-4 rounded-2xl border border-slate-200/70 shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-between">
+          <div>
+            <span className="text-[11px] font-semibold text-slate-400 block">重复与异常标红</span>
+            <span className="text-2xl font-extrabold text-rose-600 font-mono mt-0.5 block">{dupCount + errCount} <span className="text-xs font-normal text-slate-400">需修正</span></span>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600">
+            <AlertCircle className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="bg-white/80 backdrop-blur-xl p-4 rounded-2xl border border-slate-200/70 shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-between">
+          <div>
+            <span className="text-[11px] font-semibold text-slate-400 block">合格入库资产</span>
+            <span className="text-2xl font-extrabold text-emerald-600 font-mono mt-0.5 block">{assets.filter(a => a.audit_status === 2).length} <span className="text-xs font-normal text-slate-400">合格</span></span>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
+            <ShieldCheck className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="bg-white/80 backdrop-blur-xl p-4 rounded-2xl border border-slate-200/70 shadow-xs hover:shadow-md transition-all duration-200 flex items-center justify-between">
+          <div>
+            <span className="text-[11px] font-semibold text-slate-400 block">数据合规通过率</span>
+            <span className="text-2xl font-extrabold text-indigo-600 font-mono mt-0.5 block">{complianceRate}%</span>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-extrabold text-xs font-mono">
+            {complianceRate}%
+          </div>
         </div>
       </div>
 
