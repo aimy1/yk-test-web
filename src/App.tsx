@@ -148,6 +148,7 @@ export const App: React.FC = () => {
         onRefresh={handleRefresh}
         currentUser={currentUser}
         onLogout={handleLogout}
+        onNavigateTab={() => setActiveModule('audit_workflow')}
       />
 
       <div className="flex-1 flex overflow-hidden">
