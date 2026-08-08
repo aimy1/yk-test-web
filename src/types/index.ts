@@ -36,6 +36,8 @@ export interface Asset {
   sync_status: string; // synced, pending, failed, conflict
   source_type: string;
   source: string;
+  security_level?: string; // 资产涉密/安全密级
+  ex_level?: string;       // 防爆安全等级
 }
 
 export interface FieldTemplate {
@@ -69,6 +71,8 @@ export interface Unit {
   code: string;
   name: string;
   parent_code?: string;
+  level?: number;
+  level_name?: string;
   manager: string;
   phone: string;
   mappings: string[];
@@ -82,6 +86,8 @@ export interface LocationItem {
   parent_id?: string;
   unit_code: string;
   area_json: string;
+  hazard_zone?: string;
+  ex_requirement?: string;
 }
 
 export interface CodeRule {
@@ -123,6 +129,7 @@ export interface SystemUser {
   title: string;
   phone: string;
   allow_app_login: boolean;
+  permissions?: string;
   deleted?: boolean;
 }
 

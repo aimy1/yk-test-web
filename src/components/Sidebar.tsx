@@ -53,8 +53,55 @@ interface SidebarProps {
   } | null;
 }
 
+export const hasModulePermission = (
+  userOrRole?: string | { role?: string; permissions?: string } | null,
+  moduleId?: ModuleId
+): boolean => {
+  if (!moduleId) return true;
+  
+  let role = '';
+  let permissions: string | undefined = undefined;
+
+  if (typeof userOrRole === 'string') {
+    role = userOrRole;
+  } else if (userOrRole) {
+    role = userOrRole.role || '';
+    permissions = userOrRole.permissions;
+  }
+
+  // 1. Explicit per-account module permissions take 100% priority over role defaults
+  if (permissions !== undefined && permissions !== null && permissions !== '') {
+    if (permissions === '*') return true;
+    try {
+      const allowedList: string[] = JSON.parse(permissions);
+      if (Array.isArray(allowedList)) {
+        return allowedList.includes(moduleId as string);
+      }
+    } catch (e) {
+      // Ignore JSON parse error and fallback
+    }
+  }
+
+  // 2. Fallback to role-based defaults only if permissions is not explicitly set
+  if (role.includes('超级管理员')) return true;
+
+  if (role.includes('防爆') || role.includes('安全')) {
+    return ['query', 'audit_workflow', 'location', 'category', 'analytics', 'terminal', 'log', 'app_mobile'].includes(moduleId as string);
+  }
+  
+  if (role.includes('计量') || role.includes('工程师')) {
+    return ['inspection', 'receive', 'compare', 'maintenance', 'audit_workflow', 'query', 'export', 'location', 'category', 'field_template', 'rules', 'dict', 'qrcode', 'analytics', 'log', 'app_mobile'].includes(moduleId as string);
+  }
+
+  if (role.includes('采集员')) {
+    return ['maintenance', 'query', 'qrcode', 'app_mobile'].includes(moduleId as string);
+  }
+
+  return !['unit', 'user'].includes(moduleId as string);
+};
+
 export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, currentUser }) => {
-  const isSuperAdmin = currentUser?.role.includes('超级管理员');
+  const userRole = currentUser?.role || '超级管理员';
 
   const dataModules = [
     { id: 'inspection' as ModuleId, label: '数据检查(临时库)', icon: FileCheck },
@@ -64,11 +111,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
     { id: 'audit_workflow' as ModuleId, label: '单级审核管理', icon: ShieldCheck },
     { id: 'query' as ModuleId, label: '数据查询统计', icon: Search },
     { id: 'export' as ModuleId, label: '数据导出与接口', icon: FileSpreadsheet },
-  ];
+  ].filter(m => hasModulePermission(userRole, m.id));
 
   const systemModules = [
-    { id: 'unit' as ModuleId, label: '单位管理', icon: Building2, adminOnly: true },
-    { id: 'location' as ModuleId, label: '场所管理', icon: MapPin },
+    { id: 'unit' as ModuleId, label: '单位隔离管理', icon: Building2 },
+    { id: 'location' as ModuleId, label: '场所与防爆区管理', icon: MapPin },
     { id: 'category' as ModuleId, label: '资产分类树管理', icon: Sliders },
     { id: 'field_template' as ModuleId, label: '扩展属性配置', icon: Sliders },
     { id: 'rules' as ModuleId, label: '编码规则', icon: Barcode },
@@ -76,10 +123,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
     { id: 'qrcode' as ModuleId, label: '标签标牌(二维码)', icon: QrCode },
     { id: 'analytics' as ModuleId, label: '统计大屏看板', icon: BarChart3 },
     { id: 'terminal' as ModuleId, label: '移动终端管理', icon: Smartphone },
-    { id: 'user' as ModuleId, label: '用户管理', icon: Users, adminOnly: true },
+    { id: 'user' as ModuleId, label: '用户与角色管理', icon: Users },
     { id: 'log' as ModuleId, label: '系统日志审计', icon: FileText },
     { id: 'app_mobile' as ModuleId, label: 'App 移动采集端引擎', icon: Smartphone },
-  ];
+  ].filter(m => hasModulePermission(userRole, m.id));
 
 
   return (
@@ -91,27 +138,29 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
             <span>数据管理模块</span>
           </div>
           <nav className="space-y-0.5">
-            {dataModules.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeModule === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => onSelectModule(item.id)}
-                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-                    isActive
-                      ? 'bg-slate-900 text-white shadow-xs'
-                      : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900'
-                  }`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <Icon className={`w-4 h-4 ${isActive ? 'text-cyan-400' : 'text-slate-400'}`} />
-                    <span>{item.label}</span>
-                  </div>
-                  <ChevronRight className={`w-3.5 h-3.5 transition-transform ${isActive ? 'translate-x-0.5 text-cyan-400' : 'opacity-0'}`} />
-                </button>
-              );
-            })}
+            {dataModules
+              .filter((item) => hasModulePermission(currentUser, item.id))
+              .map((item) => {
+                const Icon = item.icon;
+                const isActive = activeModule === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => onSelectModule(item.id)}
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                      isActive
+                        ? 'bg-slate-900 text-white shadow-xs'
+                        : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <Icon className={`w-4 h-4 ${isActive ? 'text-cyan-400' : 'text-slate-400'}`} />
+                      <span>{item.label}</span>
+                    </div>
+                    <ChevronRight className={`w-3.5 h-3.5 transition-transform ${isActive ? 'translate-x-0.5 text-cyan-400' : 'opacity-0'}`} />
+                  </button>
+                );
+              })}
           </nav>
         </div>
 
@@ -121,7 +170,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
             <span>系统管理模块</span>
           </div>
           <nav className="space-y-0.5">
-            {systemModules.map((item) => {
+            {systemModules
+              .filter((item) => hasModulePermission(currentUser, item.id))
+              .map((item) => {
               const Icon = item.icon;
               const isActive = activeModule === item.id;
 
@@ -144,6 +195,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onSelectModule, 
               );
             })}
           </nav>
+        </div>
+      </div>
+
+      {/* Bottom Profile Info Card */}
+      <div className="p-3 border-t border-slate-200/80 bg-slate-50/50">
+        <div className="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs space-y-1.5 text-xs">
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-slate-900">{currentUser?.name || '管理员'}</span>
+            <span className="px-1.5 py-0.5 bg-slate-900 text-cyan-400 font-mono font-bold rounded text-[10px]">
+              {currentUser?.unit_code || 'UNIT-001'}
+            </span>
+          </div>
+          <div className="text-[11px] text-slate-500 truncate font-semibold">
+            {currentUser?.role || '超级管理员'}
+          </div>
+          <div className="flex items-center gap-1.5 text-[10px] text-emerald-700 font-medium pt-0.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>多单位隔离已开启</span>
+          </div>
         </div>
       </div>
     </aside>

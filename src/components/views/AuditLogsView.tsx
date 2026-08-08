@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Download, Search, Terminal, Clock, Trash2, Smartphone, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { FileText, Download, Search, Terminal, Clock, Trash2, Smartphone } from 'lucide-react';
 import { api } from '../../services/api';
 import { AuditLog } from '../../types';
+import { Pagination } from '../common/Pagination';
 import * as XLSX from 'xlsx';
 
 export const AuditLogsView: React.FC = () => {
@@ -230,89 +231,14 @@ export const AuditLogsView: React.FC = () => {
           </tbody>
         </table>
 
-        {/* Pagination Footer */}
-        <div className="bg-slate-50/90 px-4 py-3 border-t border-slate-200 flex flex-wrap items-center justify-between gap-4 text-xs">
-          <div className="text-slate-500 font-sans flex items-center gap-2">
-            <span>
-              {totalLogs > 0 ? (
-                <>显示第 <strong className="text-slate-800 font-mono">{startIndex + 1}</strong> 至 <strong className="text-slate-800 font-mono">{Math.min(startIndex + pageSize, totalLogs)}</strong> 条，共 <strong className="text-slate-800 font-mono">{totalLogs}</strong> 条日志</>
-              ) : (
-                '共 0 条日志'
-              )}
-            </span>
-          </div>
-
-          <div className="flex items-center space-x-4">
-            {/* Page Size Selector */}
-            <div className="flex items-center space-x-2 font-sans">
-              <span className="text-slate-500">每页显示:</span>
-              <select
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-                className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-700 font-semibold focus:outline-none focus:border-blue-500 cursor-pointer shadow-2xs"
-              >
-                <option value={10}>10 条/页</option>
-                <option value={20}>20 条/页</option>
-                <option value={50}>50 条/页</option>
-                <option value={100}>100 条/页</option>
-              </select>
-            </div>
-
-            {/* Pagination Controls */}
-            <div className="flex items-center space-x-1">
-              <button
-                onClick={() => setCurrentPage(1)}
-                disabled={safeCurrentPage <= 1}
-                title="首页"
-                className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-white disabled:cursor-not-allowed transition-all cursor-pointer shadow-2xs"
-              >
-                <ChevronsLeft className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={safeCurrentPage <= 1}
-                title="上一页"
-                className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-white disabled:cursor-not-allowed transition-all cursor-pointer shadow-2xs"
-              >
-                <ChevronLeft className="w-3.5 h-3.5" />
-              </button>
-
-              {getPageNumbers().map(num => (
-                <button
-                  key={num}
-                  onClick={() => setCurrentPage(num)}
-                  className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
-                    num === safeCurrentPage
-                      ? 'bg-blue-600 text-white shadow-2xs'
-                      : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200 shadow-2xs'
-                  }`}
-                >
-                  {num}
-                </button>
-              ))}
-
-              <button
-                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                disabled={safeCurrentPage >= totalPages}
-                title="下一页"
-                className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-white disabled:cursor-not-allowed transition-all cursor-pointer shadow-2xs"
-              >
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => setCurrentPage(totalPages)}
-                disabled={safeCurrentPage >= totalPages}
-                title="末页"
-                className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-white disabled:cursor-not-allowed transition-all cursor-pointer shadow-2xs"
-              >
-                <ChevronsRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-        </div>
+        <Pagination
+          currentPage={currentPage}
+          pageSize={pageSize}
+          totalItems={filtered.length}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          pageSizeOptions={[10, 20, 50, 100]}
+        />
       </div>
     </div>
   );

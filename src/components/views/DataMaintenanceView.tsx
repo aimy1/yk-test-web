@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Database, Plus, Edit, Trash2, ShieldCheck, AlertCircle, Upload, Search, Download, Filter, CheckCircle2 } from 'lucide-react';
 import { api } from '../../services/api';
 import { Asset } from '../../types';
+import { Pagination } from '../common/Pagination';
 import * as XLSX from 'xlsx';
 
 export const DataMaintenanceView: React.FC = () => {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [activeTab, setActiveTab] = useState<'ALL' | 'DUP' | 'ERR' | 'APPROVED'>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(5);
   const [showModal, setShowModal] = useState(false);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
 
@@ -76,25 +79,18 @@ export const DataMaintenanceView: React.FC = () => {
 
   const handleAutoCode = async () => {
     try {
-      const prefixMap: Record<string, string> = {
-        '输油泵类': 'YK-PUMP',
-        '阀门控制类': 'YK-VALVE',
-        '油罐储存类': 'YK-TANK',
-        '计量仪表类': 'YK-METER',
-      };
-      const prefix = prefixMap[formData.category || '输油泵类'] || 'YK-ASSET';
-      const res = await api.previewCodeRule(prefix);
-      if (res.generated_code) {
+      const res = await api.generateCodeRule(formData.category || '输油泵类', formData.unit_code);
+      if (res.code) {
         setFormData((prev) => ({
           ...prev,
-          code: res.generated_code,
-          equipment_no: res.generated_code,
-          gather_no: res.generated_code.replace(/-/g, ''),
-          plate_code: `Z$001@${res.generated_code}`,
+          code: res.code,
+          equipment_no: res.code,
+          gather_no: res.code.replace(/-/g, ''),
+          plate_code: `Z$001@${res.code}`,
         }));
       }
     } catch (err: any) {
-      alert(err.message || '编码规则测试失败');
+      alert(err.message || '服务端规则引擎生成试号失败');
     }
   };
 
@@ -280,6 +276,39 @@ export const DataMaintenanceView: React.FC = () => {
   const dupCount = assets.filter((a) => a.is_duplicate).length;
   const errCount = assets.filter((a) => a.has_error).length;
 
+  const handleExportFullAssetsExcel = () => {
+    if (filteredAssets.length === 0) {
+      alert('当前列表暂无资产数据可导出！');
+      return;
+    }
+    const exportRows = filteredAssets.map((a, index) => ({
+      '序号': index + 1,
+      '设备编号': a.equipment_no || a.code || '',
+      '编目编码': a.code || a.equipment_no || '',
+      '资产名称': a.asset_name || a.name || '',
+      '设备分类': a.category || '',
+      '规格型号': a.specification_model || '350m³/h',
+      '运行状态': a.status || '在用',
+      '归属单位': a.unit_name || '第一储运发油库区',
+      '具体安装位置': a.install_position || '',
+      '生产厂家': a.manufacturer || '',
+      '出厂日期': a.prod_date || '',
+      '数量': a.quantity || 1,
+      '资产单价(元)': a.unit_price || 0,
+      '资产总额(元)': (a.quantity || 1) * (a.unit_price || 0),
+      '安全密级': a.security_level || '内部',
+      '防爆等级': a.ex_level || 'Ex d IIB T4',
+      '排重标记': a.is_duplicate ? '⚠️ 重复标红' : '正常',
+      '纠错标记': a.has_error ? '⚠️ 错误标红' : '正常',
+      '审核状态': a.audit_status === 2 ? '已通过' : (a.audit_status === 1 ? '待审核' : (a.audit_status === 3 ? '已退回' : '草稿')),
+      '摘要备注': a.summary || '',
+    }));
+    const ws = XLSX.utils.json_to_sheet(exportRows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "油库资产档案报表");
+    XLSX.writeFile(wb, `油库全量资产档案明细表_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
   return (
     <div className="space-y-6">
       {/* Title Header */}
@@ -295,6 +324,14 @@ export const DataMaintenanceView: React.FC = () => {
         </div>
 
         <div className="flex space-x-3">
+          <button
+            onClick={handleExportFullAssetsExcel}
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-2xs cursor-pointer transition-all"
+          >
+            <Download className="w-4 h-4" />
+            导出 Excel 报表
+          </button>
+
           <label className="px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold border border-slate-200 cursor-pointer flex items-center gap-2 shadow-2xs">
             <Upload className="w-4 h-4 text-blue-600" />
             批量导入 Excel
@@ -428,7 +465,7 @@ export const DataMaintenanceView: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredAssets.map((asset) => {
+              {filteredAssets.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((asset) => {
                 const isFlagged = asset.is_duplicate || asset.has_error;
                 return (
                   <tr
@@ -490,6 +527,13 @@ export const DataMaintenanceView: React.FC = () => {
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={currentPage}
+          pageSize={pageSize}
+          totalItems={filteredAssets.length}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
 
       {/* Add / Edit Modal */}

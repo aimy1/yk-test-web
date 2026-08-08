@@ -321,26 +321,102 @@ export const DataInspectionView: React.FC = () => {
         </div>
       )}
 
-      {/* Inspect Item Modal */}
+      {/* Inspect & Edit Item Modal */}
       {inspectedItem && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white border border-slate-200 rounded-2xl p-6 w-full max-w-lg space-y-4 shadow-xl text-xs">
-            <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
-              <Eye className="w-4 h-4 text-blue-600" /> 临时库数据项校验详情
-            </h3>
-            <div className="space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-200/60 font-mono text-slate-700">
-              <div><span className="text-slate-400">编目编码:</span> {inspectedItem.code}</div>
-              <div><span className="text-slate-400">资产名称:</span> {inspectedItem.name}</div>
-              <div><span className="text-slate-400">权属单位代码:</span> {inspectedItem.unit_code}</div>
-              <div><span className="text-slate-400">使用状态:</span> {inspectedItem.status}</div>
-              <div><span className="text-slate-400">检查评估结果:</span> {inspectedItem.has_error ? inspectedItem.error_msg : '格式及权属匹配完全正确'}</div>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <Eye className="w-4 h-4 text-blue-600" />
+                临时库数据点对点在线纠错与编辑
+              </h3>
+              {inspectedItem.has_error && (
+                <span className="px-2 py-0.5 bg-rose-100 text-rose-700 font-bold rounded-md text-[10px]">
+                  异常待修正
+                </span>
+              )}
             </div>
-            <div className="flex justify-end">
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">编目编码 / 资产主编号</label>
+                <input
+                  type="text"
+                  value={inspectedItem.code}
+                  onChange={(e) => setInspectedItem({ ...inspectedItem, code: e.target.value, equipment_no: e.target.value })}
+                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">资产名称</label>
+                <input
+                  type="text"
+                  value={inspectedItem.name}
+                  onChange={(e) => setInspectedItem({ ...inspectedItem, name: e.target.value, asset_name: e.target.value })}
+                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-xs focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">权属单位代码</label>
+                <input
+                  type="text"
+                  value={inspectedItem.unit_code}
+                  onChange={(e) => setInspectedItem({ ...inspectedItem, unit_code: e.target.value })}
+                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">当前匹配目标单位代码: <span className="font-mono font-bold text-slate-700">{unitCode}</span></p>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">规格型号</label>
+                <input
+                  type="text"
+                  value={inspectedItem.specification_model || ''}
+                  onChange={(e) => setInspectedItem({ ...inspectedItem, specification_model: e.target.value })}
+                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+                />
+              </div>
+
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/60 font-mono text-slate-700">
+                <span className="text-slate-400">评估说明: </span>
+                {inspectedItem.has_error ? (
+                  <span className="text-rose-600 font-bold">{inspectedItem.error_msg}</span>
+                ) : (
+                  <span className="text-emerald-600 font-bold">校验正常</span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
               <button
                 onClick={() => setInspectedItem(null)}
-                className="px-4 py-2 bg-slate-900 text-white font-semibold rounded-xl text-xs"
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs"
               >
-                关闭
+                取消
+              </button>
+              <button
+                onClick={() => {
+                  if (!result) return;
+                  const isErr = inspectedItem.unit_code !== unitCode || !inspectedItem.name || inspectedItem.name === '未知设备资产';
+                  const updated: Asset = {
+                    ...inspectedItem,
+                    has_error: isErr,
+                    error_msg: isErr ? (inspectedItem.unit_code !== unitCode ? '越权单位代码 (与当前允许代码不匹配)' : '缺失核心资产名称字段') : undefined,
+                  };
+                  const newItems = result.items.map((i) => (i.id === inspectedItem.id ? updated : i));
+                  setResult({
+                    ...result,
+                    passed: newItems.filter((i) => !i.has_error).length,
+                    flagged_errors: newItems.filter((i) => i.has_error).length,
+                    items: newItems,
+                  });
+                  setInspectedItem(null);
+                }}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs shadow-2xs flex items-center gap-1.5"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" /> 保存修正并重新校验
               </button>
             </div>
           </div>

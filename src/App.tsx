@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Header } from './components/Header';
-import { Sidebar, ModuleId } from './components/Sidebar';
+import { Sidebar, ModuleId, hasModulePermission } from './components/Sidebar';
 import { ToastContainer, ToastMessage } from './components/common/Toast';
 import { LoginView } from './components/views/LoginView';
 import { DataInspectionView } from './components/views/DataInspectionView';
@@ -86,6 +86,16 @@ export const App: React.FC = () => {
   }
 
   const renderActiveView = () => {
+    if (!hasModulePermission(currentUser, activeModule)) {
+      return (
+        <div className="p-8 bg-rose-50 border border-rose-200 rounded-2xl text-center space-y-3">
+          <h3 className="text-base font-bold text-rose-900">⚠️ 403 越权安全防护</h3>
+          <p className="text-xs text-rose-700">当前账号角色 [<strong>{currentUser.role}</strong>] 无权访问功能模块 [<strong>{activeModule}</strong>]。</p>
+          <p className="text-xs text-slate-500">如需访问，请联系超级管理员在“用户与角色管理”中调整您的权限分配。</p>
+        </div>
+      );
+    }
+
     switch (activeModule) {
       case 'inspection':
         return <DataInspectionView key={refreshKey} />;

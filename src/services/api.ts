@@ -137,8 +137,23 @@ export const api = {
       body: JSON.stringify({ color_code_raw: colorCodeRaw }),
     }),
 
+  generateCodeRule: (category: string, unitCode?: string) =>
+    fetchJson<any>('/code-rules/generate', {
+      method: 'POST',
+      body: JSON.stringify({ category, unit_code: unitCode }),
+    }),
+
+  generateCpclPrint: (assetNo: string, assetName: string, exLevel?: string, unitName?: string) =>
+    fetchJson<any>('/app/color-code/print-cpcl', {
+      method: 'POST',
+      body: JSON.stringify({ asset_no: assetNo, asset_name: assetName, ex_level: exLevel, unit_name: unitName }),
+    }),
+
+
   // Spec 3.2 System Management
   getUnits: () => fetchJson<Unit[]>('/units'),
+
+  getUnitsTree: () => fetchJson<any[]>('/units/tree'),
 
   saveUnit: (unit: Unit) =>
     fetchJson<Unit>('/units', {

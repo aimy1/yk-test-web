@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { GitCompare, Edit3, ShieldCheck, Tag, Filter, CheckCircle2 } from 'lucide-react';
 import { api } from '../../services/api';
 import { Asset } from '../../types';
+import { Pagination } from '../common/Pagination';
 
 export const DataMigrationView: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -9,6 +10,8 @@ export const DataMigrationView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'ALL' | 'NEW' | 'DIFF'>('ALL');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [editingItem, setEditingItem] = useState<Asset | null>(null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(5);
 
   const loadData = async () => {
     setLoading(true);
@@ -113,7 +116,7 @@ export const DataMigrationView: React.FC = () => {
       {/* Comparison Grid */}
       <div className="bg-white/90 backdrop-blur-md rounded-2xl border border-slate-200/80 overflow-hidden shadow-2xs">
         <div className="divide-y divide-slate-100">
-          {filteredComparison.map(({ external, formal, diff_type }) => {
+          {filteredComparison.slice((currentPage - 1) * pageSize, currentPage * pageSize).map(({ external, formal, diff_type }) => {
             const isSelected = selectedIds.includes(external.id);
             return (
               <div key={external.id} className="p-5 hover:bg-slate-50/80 transition-colors space-y-3">
@@ -177,6 +180,13 @@ export const DataMigrationView: React.FC = () => {
             );
           })}
         </div>
+        <Pagination
+          currentPage={currentPage}
+          pageSize={pageSize}
+          totalItems={filteredComparison.length}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
 
       {/* Edit Modal */}
