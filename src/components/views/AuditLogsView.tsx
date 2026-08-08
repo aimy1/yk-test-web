@@ -14,11 +14,26 @@ export const AuditLogsView: React.FC = () => {
 
   const loadLogs = async () => {
     try {
-      const data = await api.getLogs();
+      let data = await api.getLogs();
+      if (!data || (Array.isArray(data) && data.length === 0)) {
+        const host = typeof window !== 'undefined' ? window.location.hostname || '127.0.0.1' : '127.0.0.1';
+        const rawRes = await fetch(`http://${host}:3001/api/v1/logs`);
+        if (rawRes.ok) {
+          data = await rawRes.json();
+        }
+      }
       const list = Array.isArray(data) ? data : (data?.logs || data?.items || []);
       setLogs(list);
     } catch (err) {
-      console.error(err);
+      console.error('getLogs Error:', err);
+      try {
+        const host = typeof window !== 'undefined' ? window.location.hostname || '127.0.0.1' : '127.0.0.1';
+        const rawRes = await fetch(`http://${host}:3001/api/v1/logs`);
+        if (rawRes.ok) {
+          const list = await rawRes.json();
+          setLogs(Array.isArray(list) ? list : []);
+        }
+      } catch (_) {}
     }
   };
 
