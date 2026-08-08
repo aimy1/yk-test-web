@@ -28,6 +28,7 @@ const ALL_MODULES = [
 
 export const UserManagementView: React.FC = () => {
   const [users, setUsers] = useState<SystemUser[]>([]);
+  const [units, setUnits] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -47,8 +48,12 @@ export const UserManagementView: React.FC = () => {
 
   const loadUsers = async () => {
     try {
-      const data = await api.getUsers();
-      setUsers(data);
+      const [usersData, unitsData] = await Promise.all([
+        api.getUsers(),
+        api.getUnits(),
+      ]);
+      setUsers(usersData);
+      setUnits(unitsData);
     } catch (err) {
       console.error(err);
     }
@@ -322,17 +327,24 @@ export const UserManagementView: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="text-slate-700 block mb-1 font-semibold">绑定单位代码 (数据隔离)</label>
+                <label className="text-slate-700 block mb-1 font-semibold flex items-center justify-between">
+                  <span>绑定归属单位代码 (数据隔离)</span>
+                  <span className="text-[10px] text-blue-600 font-mono">共 {units.length} 个真实单位</span>
+                </label>
                 <select
                   value={formData.unit_code}
                   onChange={(e) => setFormData({ ...formData, unit_code: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 font-mono"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 font-mono font-semibold"
                 >
-                  <option value="UNIT-ROOT">UNIT-ROOT (国家石油储运集团总公司)</option>
-                  <option value="UNIT-001">UNIT-001 (第一储运发油库区)</option>
-                  <option value="UNIT-002">UNIT-002 (第二管道输油车间)</option>
-                  <option value="UNIT-003">UNIT-003 (西南航空燃料储运中心)</option>
-                  <option value="UNIT-004">UNIT-004 (华东沿海成品油中转库)</option>
+                  {units.length === 0 ? (
+                    <option value="UNIT-001">UNIT-001 (第一储运发油库区)</option>
+                  ) : (
+                    units.map((u) => (
+                      <option key={u.code} value={u.code}>
+                        [{u.code}] {u.name} (Level {u.level || 1} - {u.level_name || '单位'})
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
               <div>
