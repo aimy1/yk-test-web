@@ -50,6 +50,35 @@ export const UnitManagementView: React.FC = () => {
     loadUnits();
   }, []);
 
+  // Helper: Get all descendant unit codes to prevent circular tree loops
+  const getDescendantCodes = (parentCode: string): string[] => {
+    const directChildren = units.filter(u => u.parent_code === parentCode);
+    let descendants = directChildren.map(c => c.code);
+    for (const child of directChildren) {
+      descendants = [...descendants, ...getDescendantCodes(child.code)];
+    }
+    return descendants;
+  };
+
+  // Helper: Build Parent Breadcrumb Path
+  const getParentPathStr = (parentCode?: string): string => {
+    if (!parentCode) return '根层级 (顶级总公司)';
+    const path: string[] = [];
+    let curCode: string | undefined = parentCode;
+    let depth = 0;
+    while (curCode && depth < 10) {
+      const unit = units.find(u => u.code === curCode);
+      if (unit) {
+        path.unshift(unit.name);
+        curCode = unit.parent_code;
+      } else {
+        break;
+      }
+      depth++;
+    }
+    return path.join(' ➔ ');
+  };
+
   const handleSimulateReplace = () => {
     const found = units.find(u => u.mappings.includes(simOldCode));
     if (found) {
@@ -328,13 +357,12 @@ export const UnitManagementView: React.FC = () => {
             <thead className="bg-slate-50/80 text-slate-500 border-b border-slate-200">
               <tr>
                 <th className="p-3.5 font-semibold">单位编码</th>
-                <th className="p-3.5 font-semibold">单位全称 / 简称</th>
-                <th className="p-3.5 font-semibold">层级称谓 (Level)</th>
+                <th className="p-3.5 font-semibold">单位名称</th>
+                <th className="p-3.5 font-semibold">层级级别</th>
                 <th className="p-3.5 font-semibold">从属层级关系 (上级)</th>
-                <th className="p-3.5 font-semibold">隔离运行状态</th>
-                <th className="p-3.5 font-semibold">数据穿透隔离权限</th>
-                <th className="p-3.5 font-semibold">负责人 / 电话</th>
-                <th className="p-3.5 font-semibold">多套代码映射</th>
+                <th className="p-3.5 font-semibold">负责人</th>
+                <th className="p-3.5 font-semibold">联系电话</th>
+                <th className="p-3.5 font-semibold">多套代码映射/替换</th>
                 <th className="p-3.5 font-semibold text-right">操作</th>
               </tr>
             </thead>
@@ -342,15 +370,10 @@ export const UnitManagementView: React.FC = () => {
               {filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((u) => {
                 const parentUnit = units.find((p) => p.code === u.parent_code);
                 const lvl = u.level || 1;
-                const statusStr = u.status || '启用中';
-                const isolationScope = u.data_isolation_scope || '包含从属下级单位';
                 return (
                   <tr key={u.code} className="hover:bg-slate-50/80 transition-colors">
                     <td className="p-3.5 font-mono font-bold text-slate-900">{u.code}</td>
-                    <td className="p-3.5 font-semibold text-slate-900">
-                      <div>{u.name}</div>
-                      {u.short_name && <span className="text-[10px] text-slate-400 font-normal">简称: {u.short_name}</span>}
-                    </td>
+                    <td className="p-3.5 font-semibold text-slate-900">{u.name}</td>
                     <td className="p-3.5">
                       <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] ${
                         lvl === 1 ? 'bg-blue-600 text-white' :
@@ -374,23 +397,8 @@ export const UnitManagementView: React.FC = () => {
                         </span>
                       )}
                     </td>
-                    <td className="p-3.5">
-                      <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
-                        statusStr === '启用中' ? 'bg-emerald-100 text-emerald-800' :
-                        statusStr === '停用隔离' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'
-                      }`}>
-                        {statusStr}
-                      </span>
-                    </td>
-                    <td className="p-3.5 text-[11px] font-medium text-slate-700">
-                      <span className="px-2 py-0.5 bg-slate-100 border border-slate-200 rounded-md text-[10px]">
-                        {isolationScope}
-                      </span>
-                    </td>
-                    <td className="p-3.5">
-                      <div className="font-semibold text-slate-900">{u.manager || '未指定'}</div>
-                      <div className="font-mono text-slate-400 text-[10px]">{u.phone || '-'}</div>
-                    </td>
+                    <td className="p-3.5">{u.manager}</td>
+                    <td className="p-3.5 font-mono">{u.phone}</td>
                     <td className="p-3.5">
                       <div className="flex flex-wrap gap-1.5">
                         {u.mappings.map((m, idx) => (
@@ -442,10 +450,9 @@ export const UnitManagementView: React.FC = () => {
             </h3>
 
             <div className="space-y-3 text-xs">
-              {/* Row 1: Code & Name */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-slate-700 block mb-1 font-semibold">自定义单位编码 *</label>
+                  <label className="text-slate-700 block mb-1 font-semibold">自定义单位编码</label>
                   <input
                     type="text"
                     value={formData.code}
@@ -455,7 +462,7 @@ export const UnitManagementView: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="text-slate-700 block mb-1 font-semibold">自定义单位全称 *</label>
+                  <label className="text-slate-700 block mb-1 font-semibold">自定义单位名称</label>
                   <input
                     type="text"
                     value={formData.name}
@@ -466,48 +473,61 @@ export const UnitManagementView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Row 2: Short Name & Parent Unit */}
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-slate-700 block mb-1 font-semibold">单位简称</label>
-                  <input
-                    type="text"
-                    value={formData.short_name || ''}
-                    onChange={(e) => setFormData({ ...formData, short_name: e.target.value })}
-                    placeholder="如: 发油一库"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900"
-                  />
-                </div>
-                <div>
-                  <label className="text-slate-700 block mb-1 font-semibold">从属上级单位 (组织架构)</label>
-                  <select
-                    value={formData.parent_code || ''}
-                    onChange={(e) => {
-                      const parentCode = e.target.value;
-                      const parentUnit = units.find(u => u.code === parentCode);
-                      const newLevel = !parentCode ? 1 : ((parentUnit?.level || 1) + 1);
-                      setFormData({
-                        ...formData,
-                        parent_code: parentCode,
-                        level: newLevel,
-                        level_name: levelNameMap[newLevel] || `第 ${newLevel} 级单位`,
-                      });
-                    }}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 font-semibold"
-                  >
-                    <option value="">-- 无 (设置为根层级 L1 顶级单位) --</option>
-                    {units
-                      .filter((u) => u.code !== formData.code)
-                      .map((u) => (
+              <div>
+                <label className="text-slate-700 block mb-1 font-semibold flex justify-between items-center">
+                  <span>从属上级单位选择 (构建组织树架构)</span>
+                  <span className="text-[10px] text-blue-600 font-mono">层级与归属树实时计算</span>
+                </label>
+                <select
+                  value={formData.parent_code || ''}
+                  onChange={(e) => {
+                    const parentCode = e.target.value;
+                    const parentUnit = units.find(u => u.code === parentCode);
+                    const newLevel = !parentCode ? 1 : ((parentUnit?.level || 1) + 1);
+                    setFormData({
+                      ...formData,
+                      parent_code: parentCode,
+                      level: newLevel,
+                      level_name: levelNameMap[newLevel] || `第 ${newLevel} 级单位`,
+                    });
+                  }}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 font-semibold font-sans focus:outline-none focus:border-blue-500"
+                >
+                  <option value="">👑 -- 无 (设置为根层级 L1 顶级单位) --</option>
+                  {units
+                    .filter((u) => {
+                      if (!formData.code) return true;
+                      if (u.code === formData.code) return false;
+                      const invalidCodes = getDescendantCodes(formData.code);
+                      return !invalidCodes.includes(u.code);
+                    })
+                    .map((u) => {
+                      const indent = '　'.repeat(Math.max(0, (u.level || 1) - 1));
+                      const prefixIcon = u.level === 1 ? '👑' : u.level === 2 ? '🏢' : u.level === 3 ? '🏭' : '🔧';
+                      return (
                         <option key={u.code} value={u.code}>
-                          [{u.code}] {u.name} ({u.level_name || `Level ${u.level || 1}`})
+                          {indent}{prefixIcon} [{u.code}] {u.name} ({u.level_name || `L${u.level}`})
                         </option>
-                      ))}
-                  </select>
-                </div>
+                      );
+                    })}
+                </select>
               </div>
 
-              {/* Row 3: Level & Level Name Override */}
+              {/* Breadcrumb Tree Path Live Preview Card */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/80 p-3 rounded-xl text-blue-900 space-y-1 text-[11px]">
+                <div className="flex justify-between items-center font-bold">
+                  <span className="flex items-center gap-1.5 text-blue-800">
+                    <GitBranch className="w-3.5 h-3.5 text-blue-600" />
+                    组织架构继承树路径:
+                  </span>
+                  <span className="bg-blue-600 text-white px-2 py-0.5 rounded text-[10px] font-mono">
+                    Auto Level {formData.level || 1}
+                  </span>
+                </div>
+                <div className="font-mono text-slate-700 font-medium pt-0.5 break-all">
+                  {getParentPathStr(formData.parent_code)} ➔ <strong className="text-blue-700 font-bold">📍 [{formData.name || '新单位'}]</strong>
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-slate-700 block mb-1 font-semibold">架构层级数字 (Level)</label>
@@ -532,102 +552,35 @@ export const UnitManagementView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Row 4: Status & Data Isolation Scope */}
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-slate-700 block mb-1 font-semibold">运行与隔离状态</label>
-                  <select
-                    value={formData.status || '启用中'}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 font-bold"
-                  >
-                    <option value="启用中">🟢 启用中 (正常数据隔离)</option>
-                    <option value="停用隔离">🔴 停用隔离 (暂封读写权限)</option>
-                    <option value="维保中">🟡 检修维保中 (只读锁定)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-slate-700 block mb-1 font-semibold">数据穿透隔离权限范围</label>
-                  <select
-                    value={formData.data_isolation_scope || '包含从属下级单位'}
-                    onChange={(e) => setFormData({ ...formData, data_isolation_scope: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 font-semibold"
-                  >
-                    <option value="包含从属下级单位">包含从属下级单位 (树级继承)</option>
-                    <option value="仅本单位独占">仅本单位独占 (严格独立隔离)</option>
-                    <option value="全库共享穿透">全库共享穿透 (集团全局视界)</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Row 5: Manager, Phone & Email */}
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <label className="text-slate-700 block mb-1 font-semibold">负责人</label>
+              <div>
+                <label className="text-slate-700 block mb-1 font-semibold">负责人与联系电话</label>
+                <div className="grid grid-cols-2 gap-2">
                   <input
                     type="text"
+                    placeholder="负责人姓名"
                     value={formData.manager}
                     onChange={(e) => setFormData({ ...formData, manager: e.target.value })}
-                    placeholder="姓名"
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900"
                   />
-                </div>
-                <div>
-                  <label className="text-slate-700 block mb-1 font-semibold">联系电话</label>
                   <input
                     type="text"
+                    placeholder="联系电话"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="如: 021-88902"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="text-slate-700 block mb-1 font-semibold">联系电子邮箱</label>
-                  <input
-                    type="email"
-                    value={formData.email || ''}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="manager@youk.com"
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 font-mono"
                   />
                 </div>
               </div>
 
-              {/* Row 6: Address Location */}
               <div>
-                <label className="text-slate-700 block mb-1 font-semibold">单位物理地址/地理位置</label>
+                <label className="text-slate-700 block mb-1 font-semibold">多套代码映射 (逗号隔开)</label>
                 <input
                   type="text"
-                  value={formData.address || ''}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  placeholder="如: 上海市浦东新区油库储运一路 88 号"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900"
+                  value={mappingInput}
+                  onChange={(e) => setMappingInput(e.target.value)}
+                  placeholder="如: ERP-DEPOT-88, MIL-UNIT-01"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 font-mono"
                 />
-              </div>
-
-              {/* Row 7: Multi Mappings & Remarks */}
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-slate-700 block mb-1 font-semibold">多套代码映射 (逗号隔开)</label>
-                  <input
-                    type="text"
-                    value={mappingInput}
-                    onChange={(e) => setMappingInput(e.target.value)}
-                    placeholder="如: ERP-DEPOT-88, MIL-UNIT-01"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="text-slate-700 block mb-1 font-semibold">备注说明</label>
-                  <input
-                    type="text"
-                    value={formData.remark || ''}
-                    onChange={(e) => setFormData({ ...formData, remark: e.target.value })}
-                    placeholder="如: 库区负责主管发油"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900"
-                  />
-                </div>
               </div>
             </div>
 

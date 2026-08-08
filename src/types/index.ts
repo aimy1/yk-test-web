@@ -70,17 +70,11 @@ export interface AuditRecord {
 export interface Unit {
   code: string;
   name: string;
-  short_name?: string;
   parent_code?: string;
   level?: number;
   level_name?: string;
   manager: string;
   phone: string;
-  email?: string;
-  address?: string;
-  status?: string; // 启用中, 停用隔离, 维保中
-  data_isolation_scope?: string; // 本单位独占, 包含从属下级单位, 全库穿透
-  remark?: string;
   mappings: string[];
 }
 
