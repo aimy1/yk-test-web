@@ -161,8 +161,8 @@ export const api = {
       body: JSON.stringify(unit),
     }),
 
-  deleteUnit: (code: string) =>
-    fetchJson<any>(`/units/${code}`, { method: 'DELETE' }),
+  deleteUnit: (code: string, force?: boolean) =>
+    fetchJson<any>(`/units/${code}${force ? '?force=true' : ''}`, { method: 'DELETE' }),
 
   getLocations: () => fetchJson<LocationItem[]>('/locations'),
 

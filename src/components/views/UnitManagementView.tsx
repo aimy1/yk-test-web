@@ -50,35 +50,6 @@ export const UnitManagementView: React.FC = () => {
     loadUnits();
   }, []);
 
-  // Helper: Get all descendant unit codes to prevent circular tree loops
-  const getDescendantCodes = (parentCode: string): string[] => {
-    const directChildren = units.filter(u => u.parent_code === parentCode);
-    let descendants = directChildren.map(c => c.code);
-    for (const child of directChildren) {
-      descendants = [...descendants, ...getDescendantCodes(child.code)];
-    }
-    return descendants;
-  };
-
-  // Helper: Build Parent Breadcrumb Path
-  const getParentPathStr = (parentCode?: string): string => {
-    if (!parentCode) return '根层级 (顶级总公司)';
-    const path: string[] = [];
-    let curCode: string | undefined = parentCode;
-    let depth = 0;
-    while (curCode && depth < 10) {
-      const unit = units.find(u => u.code === curCode);
-      if (unit) {
-        path.unshift(unit.name);
-        curCode = unit.parent_code;
-      } else {
-        break;
-      }
-      depth++;
-    }
-    return path.join(' ➔ ');
-  };
-
   const handleSimulateReplace = () => {
     const found = units.find(u => u.mappings.includes(simOldCode));
     if (found) {
@@ -115,12 +86,22 @@ export const UnitManagementView: React.FC = () => {
   };
 
   const handleDelete = async (code: string) => {
-    if (!confirm(`确认逻辑删除单位代码 ${code} 及其关系？`)) return;
+    if (!confirm(`确认逻辑删除单位代码 [${code}] 及其关系？`)) return;
     try {
       await api.deleteUnit(code);
+      alert(`✅ 单位 [${code}] 已成功逻辑删除！`);
       loadUnits();
-    } catch (err) {
-      alert('删除失败');
+    } catch (err: any) {
+      const errorMsg = err?.message || '系统数据安全拦截';
+      if (confirm(`${errorMsg}\n\n🚨 是否要执行【强制解绑删除】强行清理该单位？`)) {
+        try {
+          await api.deleteUnit(code, true);
+          alert(`⚡ 强制执行成功：单位 [${code}] 已强行逻辑删除！`);
+          loadUnits();
+        } catch (forceErr: any) {
+          alert(`强制删除失败: ${forceErr.message || '系统错误'}`);
+        }
+      }
     }
   };
 
@@ -474,10 +455,7 @@ export const UnitManagementView: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-slate-700 block mb-1 font-semibold flex justify-between items-center">
-                  <span>从属上级单位选择 (构建组织树架构)</span>
-                  <span className="text-[10px] text-blue-600 font-mono">层级与归属树实时计算</span>
-                </label>
+                <label className="text-slate-700 block mb-1 font-semibold">从属上级单位选择 (构建组织树)</label>
                 <select
                   value={formData.parent_code || ''}
                   onChange={(e) => {
@@ -491,43 +469,20 @@ export const UnitManagementView: React.FC = () => {
                       level_name: levelNameMap[newLevel] || `第 ${newLevel} 级单位`,
                     });
                   }}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 font-semibold font-sans focus:outline-none focus:border-blue-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 font-semibold"
                 >
-                  <option value="">👑 -- 无 (设置为根层级 L1 顶级单位) --</option>
+                  <option value="">-- 无 (设置为根层级 L1 顶级单位) --</option>
                   {units
-                    .filter((u) => {
-                      if (!formData.code) return true;
-                      if (u.code === formData.code) return false;
-                      const invalidCodes = getDescendantCodes(formData.code);
-                      return !invalidCodes.includes(u.code);
-                    })
-                    .map((u) => {
-                      const indent = '　'.repeat(Math.max(0, (u.level || 1) - 1));
-                      const prefixIcon = u.level === 1 ? '👑' : u.level === 2 ? '🏢' : u.level === 3 ? '🏭' : '🔧';
-                      return (
-                        <option key={u.code} value={u.code}>
-                          {indent}{prefixIcon} [{u.code}] {u.name} ({u.level_name || `L${u.level}`})
-                        </option>
-                      );
-                    })}
+                    .filter((u) => u.code !== formData.code)
+                    .map((u) => (
+                      <option key={u.code} value={u.code}>
+                        [{u.code}] {u.name} ({u.level_name || `Level ${u.level || 1}`})
+                      </option>
+                    ))}
                 </select>
               </div>
 
-              {/* Breadcrumb Tree Path Live Preview Card */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/80 p-3 rounded-xl text-blue-900 space-y-1 text-[11px]">
-                <div className="flex justify-between items-center font-bold">
-                  <span className="flex items-center gap-1.5 text-blue-800">
-                    <GitBranch className="w-3.5 h-3.5 text-blue-600" />
-                    组织架构继承树路径:
-                  </span>
-                  <span className="bg-blue-600 text-white px-2 py-0.5 rounded text-[10px] font-mono">
-                    Auto Level {formData.level || 1}
-                  </span>
-                </div>
-                <div className="font-mono text-slate-700 font-medium pt-0.5 break-all">
-                  {getParentPathStr(formData.parent_code)} ➔ <strong className="text-blue-700 font-bold">📍 [{formData.name || '新单位'}]</strong>
-                </div>
-              </div>
+              {/* Custom Level Title Override Input */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-slate-700 block mb-1 font-semibold">架构层级数字 (Level)</label>
