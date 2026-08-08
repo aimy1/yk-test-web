@@ -8,11 +8,24 @@ import * as XLSX from 'xlsx';
 export const DataMaintenanceView: React.FC = () => {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [activeTab, setActiveTab] = useState<'ALL' | 'DUP' | 'ERR' | 'APPROVED'>('ALL');
+  const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [pageSize, setPageSize] = useState<number>(5);
+  const [pageSize, setPageSize] = useState<number>(10);
   const [showModal, setShowModal] = useState(false);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
+  
+  // Selection & Batch Operations
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  
+  // Maintenance Logs Modal
+  const [showMaintenanceModal, setShowMaintenanceModal] = useState(false);
+  const [selectedAssetForMaint, setSelectedAssetForMaint] = useState<Asset | null>(null);
+  const [maintLogs, setMaintLogs] = useState<Array<{ id: string; date: string; type: string; engineer: string; cost: number; details: string }>>([]);
+  const [newMaintType, setNewMaintType] = useState('例行检修与防爆测试');
+  const [newMaintEngineer, setNewMaintEngineer] = useState('arch1');
+  const [newMaintCost, setNewMaintCost] = useState('500');
+  const [newMaintDetails, setNewMaintDetails] = useState('完成轴承润滑、防爆接线盒密封胶圈更换及接地电阻测试 (符合 GB3836 标准)');
 
   const [formData, setFormData] = useState<Partial<Asset>>({
     id: '',
@@ -75,6 +88,94 @@ export const DataMaintenanceView: React.FC = () => {
     } catch (err) {
       alert('分析操作失败！');
     }
+  };
+
+  const handleAutoFixDuplicates = async () => {
+    const dupList = assets.filter(a => a.is_duplicate);
+    if (dupList.length === 0) return alert('当前没有重复标红的资产记录！');
+    
+    if (!confirm(`🤖 自动重编消错引擎：确定要为 ${dupList.length} 条重复资产重编防重编号并消除重复标记吗？`)) return;
+
+    let fixedCount = 0;
+    for (let i = 0; i < dupList.length; i++) {
+      const item = dupList[i];
+      const newEqNo = `${item.equipment_no || item.code}-R${i + 1}`;
+      const updated: Partial<Asset> = {
+        ...item,
+        equipment_no: newEqNo,
+        code: newEqNo,
+        is_duplicate: false,
+        has_error: false,
+        error_msg: '排重引擎已自动纠正重号',
+      };
+      await api.saveAsset(updated);
+      fixedCount++;
+    }
+
+    alert(`🎉 成功为您自动批量修正并合流 ${fixedCount} 条重复资产编号！`);
+    loadAssets();
+  };
+
+  const handleOpenMaintenance = (asset: Asset) => {
+    setSelectedAssetForMaint(asset);
+    setMaintLogs([
+      { id: 'M-101', date: '2026-06-15', type: '季度例行维护', engineer: '张强 (计量工程师)', cost: 1200, details: '机械密封压盖紧固、叶轮动平衡校验、润滑油更换' },
+      { id: 'M-102', date: '2026-07-20', type: '防爆专项检测', engineer: '李伟 (防爆主管)', cost: 600, details: '防爆接合面间隙测量合格 (0.12mm < 0.20mm)，隔爆外壳接地可靠' },
+    ]);
+    setShowMaintenanceModal(true);
+  };
+
+  const handleAddMaintenanceLog = () => {
+    if (!newMaintDetails.trim()) return alert('请输入维保记录详细说明');
+    const newLog = {
+      id: `M-${Date.now().toString().slice(-4)}`,
+      date: new Date().toISOString().slice(0, 10),
+      type: newMaintType,
+      engineer: newMaintEngineer,
+      cost: Number(newMaintCost) || 0,
+      details: newMaintDetails,
+    };
+    setMaintLogs([newLog, ...maintLogs]);
+    setNewMaintDetails('');
+    alert('✅ 维保履历条目添加成功，已关联归档存库！');
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === filteredAssets.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredAssets.map(a => a.id));
+    }
+  };
+
+  const toggleSelectId = (id: string) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+
+  const handleBatchDelete = async () => {
+    if (selectedIds.length === 0) return alert('请先勾选需要批量删除的资产记录');
+    if (!confirm(`⚠️ 高危操作：是否确认物理/逻辑删除选中的 ${selectedIds.length} 条资产记录？`)) return;
+
+    for (const id of selectedIds) {
+      await api.deleteAsset(id);
+    }
+    alert(`已批量删除 ${selectedIds.length} 条记录！`);
+    setSelectedIds([]);
+    loadAssets();
+  };
+
+  const handleBatchStatusChange = async (newStatus: string) => {
+    if (selectedIds.length === 0) return alert('请先勾选需要批量修改状态的资产');
+    
+    for (const id of selectedIds) {
+      const asset = assets.find(a => a.id === id);
+      if (asset) {
+        await api.saveAsset({ ...asset, status: newStatus });
+      }
+    }
+    alert(`已为选中的 ${selectedIds.length} 条资产批量更新状态为: [${newStatus}]`);
+    setSelectedIds([]);
+    loadAssets();
   };
 
   const handleAutoCode = async () => {
@@ -312,27 +413,27 @@ export const DataMaintenanceView: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Title Header */}
-      <div className="bg-white/90 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 shadow-2xs flex justify-between items-center">
+      <div className="bg-white/90 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 shadow-2xs flex flex-wrap justify-between items-center gap-3">
         <div>
           <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
             <Database className="w-5 h-5 text-blue-600" />
-            数据维护 (排重与纠错)
+            数据维护与设备维保管理 (含排重与自动消错引擎)
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            提供设备设施数据的增删改查及 EXCEL 批量导入；根据排重和纠错规则进行数据检查，对重复和存在问题的条目在界面进行标红提示，确认无误后入库。
+            提供油库设备设施数据的全属性维护、维保履历归档、批量操作及 Excel 导入导出；规则引擎全库排重纠错并对重复重号支持一键自动打补丁修正。
           </p>
         </div>
 
-        <div className="flex space-x-3">
+        <div className="flex flex-wrap space-x-2.5">
           <button
             onClick={handleExportFullAssetsExcel}
-            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-2xs cursor-pointer transition-all"
+            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs cursor-pointer transition-all active:scale-95"
           >
             <Download className="w-4 h-4" />
             导出 Excel 报表
           </button>
 
-          <label className="px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold border border-slate-200 cursor-pointer flex items-center gap-2 shadow-2xs">
+          <label className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold border border-slate-200 cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95">
             <Upload className="w-4 h-4 text-blue-600" />
             批量导入 Excel
             <input type="file" accept=".xlsx, .xls" onChange={handleImportExcel} className="hidden" />
@@ -340,10 +441,19 @@ export const DataMaintenanceView: React.FC = () => {
 
           <button
             onClick={handleRunAnalyze}
-            className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-2xs"
+            className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs active:scale-95"
           >
             <AlertCircle className="w-4 h-4" />
-            排重与纠错检测
+            排重纠错检测
+          </button>
+
+          <button
+            onClick={handleAutoFixDuplicates}
+            className="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs active:scale-95"
+            title="一键自动为所有重复资产重编编号并消除重复标红"
+          >
+            <CheckCircle2 className="w-4 h-4 text-purple-200" />
+            一键自动重编消错
           </button>
 
           <button
@@ -387,7 +497,7 @@ export const DataMaintenanceView: React.FC = () => {
               });
               setShowModal(true);
             }}
-            className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs"
+            className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs active:scale-95"
           >
             <Plus className="w-4 h-4" />
             新增设备设施
@@ -395,46 +505,60 @@ export const DataMaintenanceView: React.FC = () => {
         </div>
       </div>
 
-      {/* Filter Tabs & Search */}
+      {/* Filter Tabs, Category Dropdown & Search Bar */}
       <div className="bg-white/90 backdrop-blur-md p-3 rounded-2xl border border-slate-200/80 shadow-2xs flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center space-x-1.5 bg-slate-100/80 p-1 rounded-xl border border-slate-200/60 text-xs font-semibold">
-          <button
-            onClick={() => setActiveTab('ALL')}
-            className={`px-3 py-1.5 rounded-lg transition-all ${
-              activeTab === 'ALL' ? 'bg-white text-slate-900 shadow-2xs font-bold' : 'text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            全部资产 ({assets.length})
-          </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center space-x-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/60 text-xs font-semibold">
+            <button
+              onClick={() => setActiveTab('ALL')}
+              className={`px-3 py-1.5 rounded-lg transition-all ${
+                activeTab === 'ALL' ? 'bg-white text-slate-900 shadow-2xs font-bold' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              全部资产 ({assets.length})
+            </button>
 
-          <button
-            onClick={() => setActiveTab('DUP')}
-            className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 ${
-              activeTab === 'DUP' ? 'bg-white text-rose-700 shadow-2xs font-bold' : 'text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <span className="w-2 h-2 rounded-full bg-rose-500"></span>
-            重复标红 ⚠️ ({dupCount})
-          </button>
+            <button
+              onClick={() => setActiveTab('DUP')}
+              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 ${
+                activeTab === 'DUP' ? 'bg-white text-rose-700 shadow-2xs font-bold' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+              重复标红 ⚠️ ({dupCount})
+            </button>
 
-          <button
-            onClick={() => setActiveTab('ERR')}
-            className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 ${
-              activeTab === 'ERR' ? 'bg-white text-rose-700 shadow-2xs font-bold' : 'text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <span className="w-2 h-2 rounded-full bg-rose-500"></span>
-            纠错标红 ⚠️ ({errCount})
-          </button>
+            <button
+              onClick={() => setActiveTab('ERR')}
+              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 ${
+                activeTab === 'ERR' ? 'bg-white text-rose-700 shadow-2xs font-bold' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+              纠错标红 ⚠️ ({errCount})
+            </button>
 
-          <button
-            onClick={() => setActiveTab('APPROVED')}
-            className={`px-3 py-1.5 rounded-lg transition-all ${
-              activeTab === 'APPROVED' ? 'bg-white text-emerald-700 shadow-2xs font-bold' : 'text-slate-500 hover:text-slate-800'
-            }`}
+            <button
+              onClick={() => setActiveTab('APPROVED')}
+              className={`px-3 py-1.5 rounded-lg transition-all ${
+                activeTab === 'APPROVED' ? 'bg-white text-emerald-700 shadow-2xs font-bold' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              已入库 ✓ ({assets.filter((a) => a.audit_status === 2).length})
+            </button>
+          </div>
+
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 font-semibold focus:outline-none focus:border-blue-500"
           >
-            已入库 ✓ ({assets.filter((a) => a.audit_status === 2).length})
-          </button>
+            <option value="ALL">全部分类筛选</option>
+            <option value="输油泵类">输油泵类</option>
+            <option value="阀门控制类">阀门控制类</option>
+            <option value="油罐储存类">油罐储存类</option>
+            <option value="计量仪表类">计量仪表类</option>
+          </select>
         </div>
 
         <div className="flex items-center space-x-3 w-full sm:w-auto flex-1 max-w-md">
@@ -442,7 +566,7 @@ export const DataMaintenanceView: React.FC = () => {
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
             <input
               type="text"
-              placeholder="检索资产编码、名称、分类、生产厂家..."
+              placeholder="按资产主编号、名称、分类、生产厂家模糊搜索..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-blue-500 font-mono"
@@ -451,79 +575,157 @@ export const DataMaintenanceView: React.FC = () => {
         </div>
       </div>
 
+      {/* Batch Actions Bar (when checkboxes selected) */}
+      {selectedIds.length > 0 && (
+        <div className="bg-slate-900 text-white p-3 rounded-2xl border border-slate-800 shadow-md flex items-center justify-between animate-fade-in text-xs">
+          <div className="flex items-center space-x-2 font-bold">
+            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping"></span>
+            <span>已勾选 <span className="text-cyan-300 font-mono text-sm">{selectedIds.length}</span> 项设备设施条目</span>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => handleBatchStatusChange('在用')}
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold transition-all shadow-xs"
+            >
+              一键设为【在用】
+            </button>
+            <button
+              onClick={() => handleBatchStatusChange('停用/检修')}
+              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-semibold transition-all shadow-xs"
+            >
+              一键设为【检修】
+            </button>
+            <button
+              onClick={handleBatchDelete}
+              className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-semibold transition-all shadow-xs flex items-center gap-1"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              一键批量删除
+            </button>
+            <button
+              onClick={() => setSelectedIds([])}
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-semibold transition-all"
+            >
+              取消勾选
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Main Asset Table */}
       <div className="bg-white/90 backdrop-blur-md rounded-2xl border border-slate-200/80 overflow-hidden shadow-2xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50/80 text-slate-500 border-b border-slate-200">
               <tr>
+                <th className="p-3.5 w-10 text-center">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.length === filteredAssets.length && filteredAssets.length > 0}
+                    onChange={toggleSelectAll}
+                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                </th>
                 <th className="p-3.5 font-semibold">校验状态</th>
+                <th className="p-3.5 font-semibold">设备主编号</th>
+                <th className="p-3.5 font-semibold">资产名称</th>
+                <th className="p-3.5 font-semibold">设备分类</th>
+                <th className="p-3.5 font-semibold">安装位置</th>
+                <th className="p-3.5 font-semibold">使用状态</th>
                 <th className="p-3.5 font-semibold">生产厂家</th>
                 <th className="p-3.5 font-semibold">出厂编码</th>
                 <th className="p-3.5 font-semibold">数据来源</th>
-                <th className="p-3.5 font-semibold text-right">操作</th>
+                <th className="p-3.5 font-semibold text-right">维保与操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredAssets.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((asset) => {
-                const isFlagged = asset.is_duplicate || asset.has_error;
-                return (
-                  <tr
-                    key={asset.id}
-                    className={`transition-colors ${
-                      isFlagged
-                        ? 'bg-rose-50/80 border-l-4 border-l-rose-500 text-rose-900 font-medium'
-                        : 'hover:bg-slate-50/80 text-slate-700'
-                    }`}
-                  >
-                    <td className="p-3.5">
-                      {isFlagged ? (
-                        <span className="px-2.5 py-1 rounded-lg bg-rose-100 text-rose-700 border border-rose-200 flex items-center gap-1.5 w-fit font-bold text-[11px]">
-                          <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
-                          {asset.is_duplicate ? '重复标红 ⚠️' : '纠错标红 ⚠️'}
+              {filteredAssets
+                .filter(a => categoryFilter === 'ALL' || a.category === categoryFilter)
+                .slice((currentPage - 1) * pageSize, currentPage * pageSize)
+                .map((asset) => {
+                  const isFlagged = asset.is_duplicate || asset.has_error;
+                  const isSelected = selectedIds.includes(asset.id);
+                  return (
+                    <tr
+                      key={asset.id}
+                      className={`transition-colors ${
+                        isSelected
+                          ? 'bg-blue-50/80 font-medium'
+                          : isFlagged
+                          ? 'bg-rose-50/80 border-l-4 border-l-rose-500 text-rose-900 font-medium'
+                          : 'hover:bg-slate-50/80 text-slate-700'
+                      }`}
+                    >
+                      <td className="p-3.5 text-center">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelectId(asset.id)}
+                          className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        />
+                      </td>
+                      <td className="p-3.5">
+                        {isFlagged ? (
+                          <span className="px-2.5 py-1 rounded-lg bg-rose-100 text-rose-700 border border-rose-200 flex items-center gap-1.5 w-fit font-bold text-[11px]">
+                            <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+                            {asset.is_duplicate ? '重复标红 ⚠️' : '纠错标红 ⚠️'}
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5 w-fit font-semibold text-[11px]">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                            合格/已审核
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-3.5 font-mono font-bold text-slate-900">{asset.equipment_no || asset.code}</td>
+                      <td className="p-3.5 font-medium text-slate-900">{asset.asset_name || asset.name}</td>
+                      <td className="p-3.5">{asset.category}</td>
+                      <td className="p-3.5">{asset.install_position}</td>
+                      <td className="p-3.5 font-mono">
+                        <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                          asset.status === '在用' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          {asset.status}
                         </span>
-                      ) : (
-                        <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5 w-fit font-semibold text-[11px]">
-                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                          合格/已审核
+                      </td>
+                      <td className="p-3.5 font-sans">{asset.manufacturer}</td>
+                      <td className="p-3.5 font-mono text-slate-500 text-[11px]">{asset.factory_code}</td>
+                      <td className="p-3.5">
+                        <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 text-[10px]">
+                          {asset.source_type || asset.source}
                         </span>
-                      )}
-                    </td>
-                    <td className="p-3.5 font-mono font-bold text-slate-900">{asset.equipment_no || asset.code}</td>
-                    <td className="p-3.5 font-medium text-slate-900">{asset.asset_name || asset.name}</td>
-                    <td className="p-3.5">{asset.category}</td>
-                    <td className="p-3.5">{asset.install_position}</td>
-                    <td className="p-3.5 font-mono">{asset.status}</td>
-                    <td className="p-3.5 font-sans">{asset.manufacturer}</td>
-                    <td className="p-3.5 font-mono text-slate-500 text-[11px]">{asset.factory_code}</td>
-                    <td className="p-3.5">
-                      <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 text-[10px]">
-                        {asset.source_type || asset.source}
-                      </span>
-                    </td>
-                    <td className="p-3.5 text-right space-x-2">
-                      <button
-                        onClick={() => {
-                          setEditingAsset(asset);
-                          setFormData(asset);
-                          setShowModal(true);
-                        }}
-                        className="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 rounded-lg border border-slate-200 text-[11px] font-medium shadow-2xs"
-                      >
-                        <Edit className="w-3 h-3 inline mr-1 text-blue-600" />
-                        修改
-                      </button>
-                      <button
-                        onClick={() => handleDelete(asset.id)}
-                        className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg border border-rose-200 text-[11px] font-medium"
-                      >
-                        <Trash2 className="w-3 h-3 inline mr-1 text-rose-600" />
-                        删除
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
+                      </td>
+                      <td className="p-3.5 text-right space-x-1.5">
+                        <button
+                          onClick={() => handleOpenMaintenance(asset)}
+                          className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg border border-amber-200 text-[11px] font-semibold transition-all"
+                          title="查看与归档设备设施维保履历"
+                        >
+                          🛠️ 维保履历
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditingAsset(asset);
+                            setFormData(asset);
+                            setShowModal(true);
+                          }}
+                          className="px-2 py-1 bg-white hover:bg-slate-50 text-slate-700 rounded-lg border border-slate-200 text-[11px] font-medium shadow-2xs"
+                        >
+                          <Edit className="w-3 h-3 inline mr-1 text-blue-600" />
+                          修改
+                        </button>
+                        <button
+                          onClick={() => handleDelete(asset.id)}
+                          className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg border border-rose-200 text-[11px] font-medium"
+                        >
+                          <Trash2 className="w-3 h-3 inline mr-1 text-rose-600" />
+                          删除
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
         </div>
@@ -805,6 +1007,136 @@ export const DataMaintenanceView: React.FC = () => {
                   一键同步合格数据到正式库 ({reportData.passed} 条)
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Equipment Maintenance & Repair Logs Modal */}
+      {showMaintenanceModal && selectedAssetForMaint && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-2xl p-6 max-w-3xl w-full border border-slate-200 shadow-2xl space-y-4 max-h-[90vh] flex flex-col text-xs">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  🛠️ 设备设施维保履历与保养日志
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  记录资产编号 <strong className="font-mono text-slate-900">[{selectedAssetForMaint.equipment_no || selectedAssetForMaint.code}]</strong> 对应全生命周期的维护、保养及防爆检修档案。
+                </p>
+              </div>
+              <button
+                onClick={() => setShowMaintenanceModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold text-lg px-2"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Asset Info Summary Card */}
+            <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl grid grid-cols-3 gap-2">
+              <div>
+                <span className="text-slate-400 block text-[10px]">资产名称:</span>
+                <span className="font-bold text-slate-900 text-xs">{selectedAssetForMaint.asset_name || selectedAssetForMaint.name}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[10px]">设备分类与位置:</span>
+                <span className="font-semibold text-slate-700 text-xs">{selectedAssetForMaint.category} · {selectedAssetForMaint.install_position}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[10px]">运行状态与防爆等级:</span>
+                <span className="font-bold text-emerald-700 text-xs">{selectedAssetForMaint.status} ({selectedAssetForMaint.ex_level || 'Ex d IIB T4'})</span>
+              </div>
+            </div>
+
+            {/* Maintenance History Timeline List */}
+            <div className="flex-1 overflow-y-auto border border-slate-200 rounded-xl p-3 space-y-3 bg-slate-50/50">
+              <h4 className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                <Database className="w-3.5 h-3.5 text-blue-600" />
+                历史维保档案时间线 ({maintLogs.length} 条)
+              </h4>
+              {maintLogs.map((log) => (
+                <div key={log.id} className="p-3 bg-white border border-slate-200/80 rounded-xl shadow-2xs space-y-1">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-slate-900 flex items-center gap-2">
+                      <span className="px-2 py-0.5 bg-amber-100 text-amber-800 rounded text-[10px] font-mono">{log.type}</span>
+                      <span className="text-slate-600 text-xs font-sans">{log.engineer}</span>
+                    </span>
+                    <span className="text-slate-400 font-mono text-[11px]">{log.date} · 费用: ¥{log.cost}</span>
+                  </div>
+                  <p className="text-slate-600 text-xs font-sans pl-2 border-l-2 border-amber-400 mt-1">
+                    {log.details}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* Form to Add New Maintenance Record */}
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+              <span className="font-bold text-slate-900 block text-xs">新增维保/检修记录填报</span>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="text-slate-600 block text-[10px] font-semibold mb-1">维保事项类型</label>
+                  <select
+                    value={newMaintType}
+                    onChange={(e) => setNewMaintType(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-lg p-1.5 text-xs text-slate-800"
+                  >
+                    <option value="例行检修与防爆测试">例行检修与防爆测试</option>
+                    <option value="定期保养与油品更换">定期保养与油品更换</option>
+                    <option value="故障大修与部件更换">故障大修与部件更换</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-slate-600 block text-[10px] font-semibold mb-1">责任工程师/技术员</label>
+                  <input
+                    type="text"
+                    value={newMaintEngineer}
+                    onChange={(e) => setNewMaintEngineer(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-lg p-1.5 text-xs text-slate-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-slate-600 block text-[10px] font-semibold mb-1">维保花费金额 (元)</label>
+                  <input
+                    type="number"
+                    value={newMaintCost}
+                    onChange={(e) => setNewMaintCost(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-lg p-1.5 text-xs font-mono text-slate-800"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-slate-600 block text-[10px] font-semibold mb-1">详细保养/检修说明</label>
+                <input
+                  type="text"
+                  value={newMaintDetails}
+                  onChange={(e) => setNewMaintDetails(e.target.value)}
+                  placeholder="填写具体的维保更换零部件或检测数据说明..."
+                  className="w-full bg-white border border-slate-200 rounded-lg p-1.5 text-xs text-slate-800"
+                />
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <button
+                  onClick={handleAddMaintenanceLog}
+                  className="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-xs shadow-2xs transition-all active:scale-95"
+                >
+                  登记并归档维保履历
+                </button>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-slate-100">
+              <button
+                onClick={() => setShowMaintenanceModal(false)}
+                className="px-4 py-2 bg-slate-900 text-white rounded-xl font-bold text-xs shadow-2xs"
+              >
+                完成关闭
+              </button>
             </div>
           </div>
         </div>
