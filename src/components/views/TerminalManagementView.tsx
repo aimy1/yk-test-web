@@ -5,6 +5,7 @@ import { Terminal } from '../../types';
 
 export const TerminalManagementView: React.FC = () => {
   const [terminals, setTerminals] = useState<Terminal[]>([]);
+  const [units, setUnits] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState<Terminal>({
@@ -19,8 +20,12 @@ export const TerminalManagementView: React.FC = () => {
 
   const loadTerms = async () => {
     try {
-      const data = await api.getTerminals();
+      const [data, unitsData] = await Promise.all([
+        api.getTerminals(),
+        api.getUnits(),
+      ]);
       setTerminals(data);
+      setUnits(unitsData);
     } catch (err) {
       console.error(err);
     }
@@ -40,6 +45,17 @@ export const TerminalManagementView: React.FC = () => {
       loadTerms();
     } catch (err) {
       alert('保存失败');
+    }
+  };
+
+  const handleDelete = async (t: Terminal) => {
+    if (!confirm(`确定要从系统中逻辑删除移动终端设备 [${t.terminal_code}] (${t.brand} ${t.model}) 吗？`)) return;
+    try {
+      await api.deleteTerminal(t.id);
+      alert('移动终端设备已成功逻辑删除！');
+      loadTerms();
+    } catch (err) {
+      alert('删除失败');
     }
   };
 
@@ -113,9 +129,12 @@ export const TerminalManagementView: React.FC = () => {
                     <Wifi className="w-3 h-3 inline mr-1" /> {t.status}
                   </span>
                 </td>
-                <td className="p-3.5 text-right space-x-2">
+                <td className="p-3.5 text-right space-x-1.5">
                   <button onClick={() => { setFormData(t); setShowModal(true); }} className="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 rounded-lg border border-slate-200 text-[11px] font-medium shadow-2xs">
                     <Edit className="w-3 h-3 inline mr-1 text-blue-600" /> 修改
+                  </button>
+                  <button onClick={() => handleDelete(t)} className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg border border-rose-200 text-[11px] font-medium shadow-2xs">
+                    <Trash2 className="w-3 h-3 inline mr-1 text-rose-600" /> 删除
                   </button>
                 </td>
               </tr>
@@ -158,14 +177,24 @@ export const TerminalManagementView: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="text-slate-700 block mb-1 font-semibold">绑定单位代码 (同级数据对接隔离)</label>
+                <label className="text-slate-700 block mb-1 font-semibold flex items-center justify-between">
+                  <span>绑定单位代码 (同级数据对接隔离)</span>
+                  <span className="text-[10px] text-blue-600 font-mono">共 {units.length} 个真实单位</span>
+                </label>
                 <select
                   value={formData.unit_code}
                   onChange={(e) => setFormData({ ...formData, unit_code: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 font-mono"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 font-mono font-semibold"
                 >
-                  <option value="UNIT-001">UNIT-001 (第一储运发油库区)</option>
-                  <option value="UNIT-002">UNIT-002 (第二管道输油车间)</option>
+                  {units.length === 0 ? (
+                    <option value="UNIT-001">UNIT-001 (第一储运发油库区)</option>
+                  ) : (
+                    units.map((u) => (
+                      <option key={u.code} value={u.code}>
+                        [{u.code}] {u.name} (Level {u.level || 1} - {u.level_name || '单位'})
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
             </div>

@@ -191,6 +191,9 @@ export const api = {
       body: JSON.stringify(item),
     }),
 
+  deleteDictionary: (id: string) =>
+    fetchJson<any>(`/dictionaries/${id}`, { method: 'DELETE' }),
+
   login: (username: string, password?: string) =>
     fetchJson<any>('/auth/login', {
       method: 'POST',
@@ -209,6 +212,9 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(term),
     }),
+
+  deleteTerminal: (id: string) =>
+    fetchJson<any>(`/terminals/${id}`, { method: 'DELETE' }),
 
   getUsers: () => fetchJson<SystemUser[]>('/users'),
 

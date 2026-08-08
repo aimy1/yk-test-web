@@ -44,6 +44,17 @@ export const DataDictView: React.FC = () => {
     }
   };
 
+  const handleDelete = async (item: DictionaryItem) => {
+    if (!confirm(`确认要物理删除数据字典条目 [${item.dict_type}] -> [${item.label}] 吗？`)) return;
+    try {
+      await api.deleteDictionary(item.id);
+      alert('字典条目已成功安全删除！');
+      loadDicts();
+    } catch (err) {
+      alert('删除失败');
+    }
+  };
+
   const handleExport = () => {
     const data = filtered.map(d => ({
       '字典ID': d.id,
@@ -166,12 +177,18 @@ export const DataDictView: React.FC = () => {
                   </span>
                 </td>
                 <td className="p-3.5 text-slate-500 text-[11px]">{d.remark}</td>
-                <td className="p-3.5 text-right">
+                <td className="p-3.5 text-right space-x-1.5">
                   <button
                     onClick={() => { setFormData(d); setShowModal(true); }}
                     className="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 rounded-lg border border-slate-200 text-[11px] font-medium shadow-2xs"
                   >
                     <Edit className="w-3 h-3 inline mr-1 text-blue-600" /> 修改
+                  </button>
+                  <button
+                    onClick={() => handleDelete(d)}
+                    className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg border border-rose-200 text-[11px] font-medium shadow-2xs"
+                  >
+                    <Trash2 className="w-3 h-3 inline mr-1 text-rose-600" /> 删除
                   </button>
                 </td>
               </tr>
