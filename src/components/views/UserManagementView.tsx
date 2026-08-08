@@ -348,17 +348,14 @@ export const UserManagementView: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label className="text-slate-700 block mb-1 font-semibold">系统角色</label>
-                <select
+                <label className="text-slate-700 block mb-1 font-semibold">自定义系统角色名称 (System Role)</label>
+                <input
+                  type="text"
                   value={formData.role}
                   onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900"
-                >
-                  <option value="超级管理员 (发油库主任)">超级管理员 (发油库主任)</option>
-                  <option value="油库计量工程师">油库计量工程师</option>
-                  <option value="安全防爆主管">安全防爆主管</option>
-                  <option value="资产采集员">资产采集员</option>
-                </select>
+                  placeholder="如: 超级管理员 / 计量工程师 / 防爆主管 / 调度专员..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 font-semibold text-xs"
+                />
               </div>
               <div>
                 <label className="text-slate-700 block mb-1 font-semibold">联系电话</label>
