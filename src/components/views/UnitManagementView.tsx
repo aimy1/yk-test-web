@@ -15,24 +15,10 @@ export const UnitManagementView: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(5);
 
-  // Custom Level Name Configurations
-  const [levelNameMap, setLevelNameMap] = useState<Record<number, string>>({
-    1: '集团总公司/总部',
-    2: '省/区域储运分公司',
-    3: '基层发油油库',
-    4: '车间/作业区班组',
-    5: '末端岗卡组',
-  });
-  const [showLevelConfigModal, setShowLevelConfigModal] = useState(false);
-
-  const [isCustomParentInput, setIsCustomParentInput] = useState(false);
-
   const [formData, setFormData] = useState<Unit>({
     code: '',
     name: '',
     parent_code: '',
-    level: 1,
-    level_name: '集团总公司/总部',
     manager: '',
     phone: '',
     mappings: [],
@@ -66,20 +52,8 @@ export const UnitManagementView: React.FC = () => {
     if (!formData.code || !formData.name) return alert('请填写单位编码和名称');
     try {
       const mappingsArr = mappingInput ? mappingInput.split(',').map(s => s.trim()).filter(Boolean) : formData.mappings;
-      
-      // Auto compute level and default level_name if not custom set
-      const calculatedLevel = !formData.parent_code ? 1 : ((units.find(u => u.code === formData.parent_code)?.level || 1) + 1);
-      const finalLevelName = formData.level_name || levelNameMap[calculatedLevel] || `第 ${calculatedLevel} 级单位`;
-      
-      const payload: Unit = {
-        ...formData,
-        level: formData.level || calculatedLevel,
-        level_name: finalLevelName,
-        mappings: mappingsArr,
-      };
-
-      await api.saveUnit(payload);
-      alert(`🎉 成功保存单位 [${formData.name}]，当前架构层级: ${finalLevelName} (Level ${payload.level})`);
+      await api.saveUnit({ ...formData, mappings: mappingsArr });
+      alert('保存成功！已建立单位信息与代码映射。');
       setShowModal(false);
       loadUnits();
     } catch (err: any) {
@@ -88,22 +62,12 @@ export const UnitManagementView: React.FC = () => {
   };
 
   const handleDelete = async (code: string) => {
-    if (!confirm(`确认逻辑删除单位代码 [${code}] 及其关系？`)) return;
+    if (!confirm(`确认逻辑删除单位代码 ${code} 及其关系？`)) return;
     try {
       await api.deleteUnit(code);
-      alert(`✅ 单位 [${code}] 已成功逻辑删除！`);
       loadUnits();
-    } catch (err: any) {
-      const errorMsg = err?.message || '系统数据安全拦截';
-      if (confirm(`${errorMsg}\n\n🚨 是否要执行【强制解绑删除】强行清理该单位？`)) {
-        try {
-          await api.deleteUnit(code, true);
-          alert(`⚡ 强制执行成功：单位 [${code}] 已强行逻辑删除！`);
-          loadUnits();
-        } catch (forceErr: any) {
-          alert(`强制删除失败: ${forceErr.message || '系统错误'}`);
-        }
-      }
+    } catch (err) {
+      alert('删除失败');
     }
   };
 
@@ -127,43 +91,34 @@ export const UnitManagementView: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Title Header */}
-      <div className="bg-white/90 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 shadow-2xs flex flex-wrap justify-between items-center gap-3">
+      <div className="bg-white/90 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 shadow-2xs flex justify-between items-center">
         <div>
           <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
             <Building2 className="w-5 h-5 text-blue-600" />
-            单位隔离与从属层级管理 (支持自定义层级称谓与单位名)
+            单位管理 (编码从属关系与多套代码映射)
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            定义油库组织架构与多级从属树；支持自由自定义任意层级称谓（如：集团/分公司/库区/班组）与单位名称，实现多单位数据隔离。
+            建立单位间的从属关系；提供条件检索、修改、逻辑删除、EXCEL 导出，支持多套单位代码映射与替换。
           </p>
         </div>
-        <div className="flex space-x-2.5">
+        <div className="flex space-x-3">
           <button
             onClick={handleExport}
-            className="px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold border border-slate-200 flex items-center gap-1.5 shadow-2xs transition-all active:scale-95 cursor-pointer"
+            className="px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold border border-slate-200 flex items-center gap-2 shadow-2xs"
           >
             <Download className="w-4 h-4 text-blue-600" />
             导出 Excel
           </button>
           <button
             onClick={() => {
-              setFormData({
-                code: `UNIT-00${units.length + 1}`,
-                name: '',
-                parent_code: '',
-                level: 1,
-                level_name: '集团总部',
-                manager: '',
-                phone: '',
-                mappings: [],
-              });
+              setFormData({ code: `UNIT-00${units.length + 1}`, name: '', parent_code: '', manager: '', phone: '', mappings: [] });
               setMappingInput('');
               setShowModal(true);
             }}
-            className="px-3.5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
+            className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs"
           >
             <Plus className="w-4 h-4" />
-            新增自定义单位
+            新增单位编码
           </button>
         </div>
       </div>
@@ -417,182 +372,83 @@ export const UnitManagementView: React.FC = () => {
         </div>
       )}
 
-      {/* Unit Edit / Create Modal - Completely Redesigned */}
+      {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white border border-slate-200/90 rounded-3xl p-6 w-full max-w-xl space-y-5 shadow-2xl text-xs relative overflow-hidden">
-            {/* Header */}
-            <div className="flex justify-between items-center pb-4 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-2xs">
-                  <Building2 className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                    {formData.code ? `编辑单位节点 [${formData.name || formData.code}]` : '创建新自定义单位架构节点'}
-                  </h3>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
-                    维护单位身份、定义上下级树形挂载从属链，以及多套异构系统代码映射。
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowModal(false)}
-                className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-600 flex items-center justify-center font-bold text-xs transition-colors cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 w-full max-w-lg space-y-4 shadow-xl">
+            <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3">维护单位编码及层级关系</h3>
 
-            {/* Live Hierarchy Path Preview Banner */}
-            <div className="bg-linear-to-r from-blue-50/90 to-indigo-50/90 border border-blue-200/70 p-3 rounded-2xl flex items-center justify-between text-[11px] text-slate-800 shadow-2xs">
-              <div className="flex items-center gap-2 overflow-x-auto font-medium">
-                <span className="font-bold text-blue-700 shrink-0 flex items-center gap-1">
-                  <GitBranch className="w-3.5 h-3.5" />
-                  架构挂载路径:
-                </span>
-                <span className="text-slate-600">
-                  {!formData.parent_code
-                    ? '🌐 [根节点 / 顶级单位]'
-                    : `${units.find((u) => u.code === formData.parent_code)?.name || formData.parent_code} (Level ${
-                        units.find((u) => u.code === formData.parent_code)?.level || 1
-                      })`}
-                </span>
-                <span className="text-slate-400 font-bold">➔</span>
-                <span className="font-bold text-blue-900 bg-white px-2.5 py-1 rounded-lg border border-blue-200 shadow-2xs">
-                  📍 {formData.name || formData.code || '新单位'} (Level {formData.level || 1} • {formData.level_name || '自定义层级'})
-                </span>
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="text-slate-700 block mb-1 font-semibold">单位编码</label>
+                <input
+                  type="text"
+                  value={formData.code}
+                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 font-mono"
+                />
               </div>
-            </div>
+              <div>
+                <label className="text-slate-700 block mb-1 font-semibold">单位名称</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900"
+                />
+              </div>
+              <div>
+                <label className="text-slate-700 block mb-1 font-semibold">上级单位选择 (建立树形从属架构)</label>
+                <select
+                  value={formData.parent_code || ''}
+                  onChange={(e) => {
+                    const newParent = e.target.value;
+                    const pUnit = units.find(u => u.code === newParent);
+                    const calcLevel = !newParent ? 1 : ((pUnit?.level || 1) + 1);
+                    const defaultName = !newParent ? '集团总部' : (calcLevel === 2 ? '储运分公司' : (calcLevel === 3 ? '基层油库' : '班组作业区'));
+                    setFormData({
+                      ...formData,
+                      parent_code: newParent,
+                      level: calcLevel,
+                      level_name: formData.level_name || defaultName
+                    });
+                  }}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 font-semibold"
+                >
+                  <option value="">-- 无 (设置为根层级/集团总部单位) --</option>
+                  {units
+                    .filter((u) => u.code !== formData.code)
+                    .map((u) => (
+                      <option key={u.code} value={u.code}>
+                        [{u.code}] {u.name} (Level {u.level || 1} - {u.level_name || '单位'})
+                      </option>
+                    ))}
+                </select>
+              </div>
 
-            <div className="space-y-4">
-              {/* Card 1: Identity & Parent Relationship */}
-              <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200/70 space-y-3">
+              {/* Custom Level Name Input & Presets */}
+              <div className="bg-slate-50/80 p-3 rounded-xl border border-slate-200/80 space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="font-bold text-slate-800 text-[11px] flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-blue-600"></span>
-                    ① 基础身份与上级从属关系 (决定组织树)
+                  <label className="text-slate-800 font-bold block text-xs">自定义层级名称 (Level Name)</label>
+                  <span className="text-[10px] text-blue-600 font-mono font-bold">
+                    自动深度: Level {!formData.parent_code ? 1 : ((units.find(u => u.code === formData.parent_code)?.level || 1) + 1)}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => setIsCustomParentInput(!isCustomParentInput)}
-                    className="text-[10px] text-blue-600 hover:text-blue-800 font-bold underline cursor-pointer"
-                  >
-                    {isCustomParentInput ? '📋 切换为下拉选择模式' : '✍️ 切换为手写自定义上级编码'}
-                  </button>
                 </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-slate-700 block mb-1 font-semibold text-[10px]">自定义单位编码 *</label>
-                    <input
-                      type="text"
-                      value={formData.code}
-                      onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                      placeholder="如: UNIT-001"
-                      className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 font-mono text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-slate-700 block mb-1 font-semibold text-[10px]">自定义单位名称 *</label>
-                    <input
-                      type="text"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="如: 华东大区发油储运总库"
-                      className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 font-bold text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-slate-700 block mb-1 font-semibold text-[10px]">
-                    上级从属单位编码 (决定在组织树中的上级节点)
-                  </label>
-                  {isCustomParentInput ? (
-                    <input
-                      type="text"
-                      value={formData.parent_code || ''}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setFormData({
-                          ...formData,
-                          parent_code: val,
-                          level: val ? formData.level || 2 : 1,
-                        });
-                      }}
-                      placeholder="自由手写填入自定义上级代码，如: UNIT-ROOT / DEPOT-01"
-                      className="w-full bg-white border border-blue-300 rounded-xl p-2.5 text-slate-900 font-mono text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                    />
-                  ) : (
-                    <select
-                      value={formData.parent_code || ''}
-                      onChange={(e) => {
-                        const parentCode = e.target.value;
-                        const parentUnit = units.find((u) => u.code === parentCode);
-                        const newLevel = !parentCode ? 1 : (parentUnit?.level || 1) + 1;
-                        setFormData({
-                          ...formData,
-                          parent_code: parentCode,
-                          level: newLevel,
-                          level_name: formData.level_name || (!parentCode ? '顶级单位' : '从属单位'),
-                        });
-                      }}
-                      className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 font-semibold text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                    >
-                      <option value="">-- 无上级 (设置为 L1 顶级/根节点单位) --</option>
-                      {units
-                        .filter((u) => u.code !== formData.code)
-                        .map((u) => (
-                          <option key={u.code} value={u.code}>
-                            [{u.code}] {u.name} {u.level_name ? `(${u.level_name})` : `(Level ${u.level || 1})`}
-                          </option>
-                        ))}
-                    </select>
-                  )}
-                </div>
-              </div>
-
-              {/* Card 2: Custom Hierarchy Level & Titles */}
-              <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200/70 space-y-3">
-                <span className="font-bold text-slate-800 text-[11px] flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
-                  ② 自定义体系称谓与架构层级 (Level)
-                </span>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-slate-700 block mb-1 font-semibold text-[10px]">架构数字层级 (Level)</label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={10}
-                      value={formData.level || 1}
-                      onChange={(e) => setFormData({ ...formData, level: Number(e.target.value) || 1 })}
-                      className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 font-mono text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-slate-700 block mb-1 font-semibold text-[10px]">自定义体系/层级称谓 *</label>
-                    <input
-                      type="text"
-                      value={formData.level_name || ''}
-                      onChange={(e) => setFormData({ ...formData, level_name: e.target.value })}
-                      placeholder="如: 华东仓储事业部 / 发油班组"
-                      className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 font-semibold text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Quick Preset Title Chips */}
-                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                  <span className="text-slate-400 text-[10px] font-medium">快捷常用称谓:</span>
-                  {['集团/总公司', '分公司/事业部', '发油油库/库区', '车间/作业班组', '特种仓储部', '质检实验室'].map((tag) => (
+                <input
+                  type="text"
+                  value={formData.level_name || ''}
+                  onChange={(e) => setFormData({ ...formData, level_name: e.target.value })}
+                  placeholder="如: 储运事业部 / 基层油库 / 维保工区 / 发油班组..."
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold text-xs focus:outline-none focus:border-blue-500"
+                />
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  <span className="text-[10px] text-slate-400 self-center">常用预设标签:</span>
+                  {['集团总部', '储运事业部', '油库处', '基层油库', '维保工区', '发油班组', '技术保障部'].map(tag => (
                     <button
                       key={tag}
                       type="button"
                       onClick={() => setFormData({ ...formData, level_name: tag })}
-                      className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 hover:border-slate-300 rounded-lg text-[10px] text-slate-700 font-semibold transition-all active:scale-95 cursor-pointer shadow-2xs"
+                      className="px-2 py-0.5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-md text-[10px] font-medium transition-all active:scale-95 cursor-pointer"
                     >
                       {tag}
                     </button>
@@ -600,63 +456,42 @@ export const UnitManagementView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Card 3: Manager & Multi-System Mappings */}
-              <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200/70 space-y-3">
-                <span className="font-bold text-slate-800 text-[11px] flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
-                  ③ 责任人与外部多套异构系统代码映射
-                </span>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-slate-700 block mb-1 font-semibold text-[10px]">单位责任人</label>
-                    <input
-                      type="text"
-                      placeholder="负责人姓名"
-                      value={formData.manager}
-                      onChange={(e) => setFormData({ ...formData, manager: e.target.value })}
-                      className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-slate-700 block mb-1 font-semibold text-[10px]">联系电话</label>
-                    <input
-                      type="text"
-                      placeholder="联系电话"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 font-mono text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-slate-700 block mb-1 font-semibold text-[10px]">外部异构代码映射 (逗号隔开)</label>
+              <div>
+                <label className="text-slate-700 block mb-1 font-semibold">负责人与联系电话</label>
+                <div className="grid grid-cols-2 gap-2">
                   <input
                     type="text"
-                    value={mappingInput}
-                    onChange={(e) => setMappingInput(e.target.value)}
-                    placeholder="如: ERP-DEPOT-88, MIL-UNIT-01"
-                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 font-mono text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                    placeholder="姓名"
+                    value={formData.manager}
+                    onChange={(e) => setFormData({ ...formData, manager: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900"
+                  />
+                  <input
+                    type="text"
+                    placeholder="电话"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 font-mono"
                   />
                 </div>
               </div>
+              <div>
+                <label className="text-slate-700 block mb-1 font-semibold">多套代码映射 (逗号隔开，如: JD-DEPOT-01, SYS-YK-A)</label>
+                <input
+                  type="text"
+                  value={mappingInput}
+                  onChange={(e) => setMappingInput(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 font-mono"
+                />
+              </div>
             </div>
 
-            {/* Actions Footer */}
             <div className="flex justify-end space-x-3 pt-3 border-t border-slate-100">
-              <button
-                onClick={() => setShowModal(false)}
-                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold text-xs transition-colors cursor-pointer"
-              >
+              <button onClick={() => setShowModal(false)} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-semibold">
                 取消
               </button>
-              <button
-                onClick={handleSave}
-                className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
-              >
-                <Building2 className="w-4 h-4 text-blue-400" />
-                保存单位节点
+              <button onClick={handleSave} className="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-semibold shadow-2xs">
+                保存单位层级架构
               </button>
             </div>
           </div>
