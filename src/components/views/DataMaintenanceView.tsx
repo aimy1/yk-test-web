@@ -67,6 +67,10 @@ export const DataMaintenanceView: React.FC = () => {
     source: 'PC新增',
   });
 
+  // Diagnostic Workbench Modal
+  const [showAnalyzeModal, setShowAnalyzeModal] = useState(false);
+  const [analyzeSummary, setAnalyzeSummary] = useState({ total: 0, dups: 0, errs: 0 });
+
   const loadAssets = async () => {
     try {
       const data = await api.getAssets();
@@ -82,12 +86,42 @@ export const DataMaintenanceView: React.FC = () => {
 
   const handleRunAnalyze = async () => {
     try {
-      const res = await api.analyzeDedupAndErrors();
-      alert(res.message);
-      loadAssets();
+      await api.analyzeDedupAndErrors();
+      const freshData = await api.getAssets();
+      setAssets(freshData);
+      
+      const dups = freshData.filter(a => a.is_duplicate).length;
+      const errs = freshData.filter(a => a.has_error).length;
+      setAnalyzeSummary({ total: freshData.length, dups, errs });
+      setShowAnalyzeModal(true);
     } catch (err) {
       alert('分析操作失败！');
     }
+  };
+
+  const handleBatchFixErrors = async () => {
+    const errList = assets.filter(a => a.has_error);
+    if (errList.length === 0) return alert('当前没有需要纠错修复的异常记录！');
+
+    if (!confirm(`🛠️ 属性纠错修复引擎：确定要为 ${errList.length} 条异常资产自动补全缺省安装位置与合规属性吗？`)) return;
+
+    let fixedCount = 0;
+    for (const item of errList) {
+      const updated: Partial<Asset> = {
+        ...item,
+        install_position: item.install_position || '第一发油库区 A 区泵房',
+        manufacturer: item.manufacturer || '通用油库设备制造厂',
+        has_error: false,
+        error_msg: '属性已由纠错引擎自动补全',
+      };
+      await api.saveAsset(updated);
+      fixedCount++;
+    }
+
+    alert(`🎉 成功为您自动修复补全 ${fixedCount} 条异常资产属性！`);
+    const freshData = await api.getAssets();
+    setAssets(freshData);
+    setAnalyzeSummary({ total: freshData.length, dups: freshData.filter(a => a.is_duplicate).length, errs: 0 });
   };
 
   const handleAutoFixDuplicates = async () => {
@@ -1184,6 +1218,142 @@ export const DataMaintenanceView: React.FC = () => {
               >
                 完成关闭
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Interactive Deduplication & Error Diagnostic Workbench Modal */}
+      {showAnalyzeModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-2xl p-6 max-w-4xl w-full border border-slate-200 shadow-2xl space-y-4 max-h-[90vh] flex flex-col text-xs">
+            {/* Modal Header */}
+            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                  🔍 油库全库数据排重与纠错诊断工作台
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  规则引擎对 <strong className="font-mono text-slate-900">{analyzeSummary.total}</strong> 条在册资产进行了逻辑交叉比对与重号碰撞分析。
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAnalyzeModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold text-lg px-2 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Diagnostic Metric Cards */}
+            <div className="grid grid-cols-4 gap-3">
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                <span className="text-[10px] text-slate-400 font-medium block">扫描分析样本</span>
+                <span className="text-lg font-bold text-slate-900 font-mono mt-0.5 block">{analyzeSummary.total} 条</span>
+              </div>
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl">
+                <span className="text-[10px] text-rose-600 font-bold block">重号标红记录 ⚠️</span>
+                <span className="text-lg font-bold text-rose-700 font-mono mt-0.5 block">{analyzeSummary.dups} 项冲突</span>
+              </div>
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                <span className="text-[10px] text-amber-700 font-bold block">属性缺失/纠错标红 ⚠️</span>
+                <span className="text-lg font-bold text-amber-800 font-mono mt-0.5 block">{analyzeSummary.errs} 项问题</span>
+              </div>
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                <span className="text-[10px] text-emerald-700 font-bold block">可一键自动修正</span>
+                <span className="text-lg font-bold text-emerald-800 font-mono mt-0.5 block">{analyzeSummary.dups + analyzeSummary.errs} 项</span>
+              </div>
+            </div>
+
+            {/* Dual Column Diagnostic Table */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 overflow-hidden">
+              {/* Left Column: Duplicate Items */}
+              <div className="border border-slate-200 rounded-xl p-3 bg-slate-50/50 flex flex-col space-y-2 overflow-hidden">
+                <div className="flex justify-between items-center pb-2 border-b border-slate-200">
+                  <span className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                    重号冲突记录 ({assets.filter(a => a.is_duplicate).length})
+                  </span>
+                  <button
+                    onClick={handleAutoFixDuplicates}
+                    disabled={analyzeSummary.dups === 0}
+                    className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-lg text-[11px] font-semibold transition-all shadow-2xs"
+                  >
+                    一键批量重编消错
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+                  {assets.filter(a => a.is_duplicate).length === 0 ? (
+                    <div className="text-center text-slate-400 py-8 font-medium">✓ 未检测到编号重复冲突资产</div>
+                  ) : (
+                    assets.filter(a => a.is_duplicate).map(item => (
+                      <div key={item.id} className="p-2.5 bg-white border border-rose-200 rounded-xl space-y-1 shadow-2xs">
+                        <div className="flex justify-between items-center">
+                          <span className="font-mono font-bold text-rose-700">{item.equipment_no || item.code}</span>
+                          <span className="px-1.5 py-0.5 bg-rose-100 text-rose-700 rounded text-[10px] font-bold">重号标红</span>
+                        </div>
+                        <div className="text-slate-700 font-medium text-[11px]">{item.asset_name || item.name} · {item.category}</div>
+                        <div className="text-slate-400 text-[10px]">生产厂家: {item.manufacturer || '未填'}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Right Column: Attribute Error Items */}
+              <div className="border border-slate-200 rounded-xl p-3 bg-slate-50/50 flex flex-col space-y-2 overflow-hidden">
+                <div className="flex justify-between items-center pb-2 border-b border-slate-200">
+                  <span className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                    属性缺省/问题记录 ({assets.filter(a => a.has_error).length})
+                  </span>
+                  <button
+                    onClick={handleBatchFixErrors}
+                    disabled={analyzeSummary.errs === 0}
+                    className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-lg text-[11px] font-semibold transition-all shadow-2xs"
+                  >
+                    一键智能补全属性
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+                  {assets.filter(a => a.has_error).length === 0 ? (
+                    <div className="text-center text-slate-400 py-8 font-medium">✓ 未检测到属性缺失异常资产</div>
+                  ) : (
+                    assets.filter(a => a.has_error).map(item => (
+                      <div key={item.id} className="p-2.5 bg-white border border-amber-200 rounded-xl space-y-1 shadow-2xs">
+                        <div className="flex justify-between items-center">
+                          <span className="font-mono font-bold text-slate-900">{item.equipment_no || item.code}</span>
+                          <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded text-[10px] font-bold">纠错标红</span>
+                        </div>
+                        <div className="text-slate-700 font-medium text-[11px]">{item.asset_name || item.name}</div>
+                        <div className="text-rose-600 text-[10px] font-semibold">⚠️ 错误原因: {item.error_msg || '位置或关键字段缺省'}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Modal Actions */}
+            <div className="flex justify-between items-center pt-3 border-t border-slate-100">
+              <button
+                onClick={handleExportFullAssetsExcel}
+                className="px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 rounded-xl font-semibold border border-slate-200 flex items-center gap-1.5 shadow-2xs"
+              >
+                <Download className="w-4 h-4 text-blue-600" />
+                导出排重诊断报告 (.xlsx)
+              </button>
+
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => setShowAnalyzeModal(false)}
+                  className="px-4 py-2 bg-slate-900 text-white rounded-xl font-bold shadow-2xs hover:bg-slate-800"
+                >
+                  关闭诊断工作台
+                </button>
+              </div>
             </div>
           </div>
         </div>
