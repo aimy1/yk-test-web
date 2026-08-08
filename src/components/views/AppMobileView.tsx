@@ -75,14 +75,14 @@ export const AppMobileView: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Title Header */}
-      <div className="bg-white/90 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 shadow-2xs flex justify-between items-center">
+      <div className="bg-white/90 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 shadow-2xs flex flex-wrap justify-between items-center gap-3">
         <div>
           <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
             <Smartphone className="w-5 h-5 text-blue-600" />
-            移动端采集与基础能力引擎
+            App 移动采集端与防爆终端模拟引擎
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            支持 App 端离线采集、现场拍照/录像/录音/照明/定位降级提示、三维彩码编码识别、赋码打码贴签与离线同步机制。
+            实时运行 Flutter 工业防爆 PDA 采集引擎 Web 容器；支持现场数据采编、三维彩码识别、防爆硬件能力模拟与离线数据全量同步。
           </p>
         </div>
 
@@ -94,7 +94,7 @@ export const AppMobileView: React.FC = () => {
               appTab === 'COLLECT' ? 'bg-white text-slate-900 shadow-2xs font-bold' : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            现场数据采集与基础能力
+            📱 实时 App 手机容器
           </button>
           <button
             onClick={() => setAppTab('3D_CODE')}
@@ -102,7 +102,7 @@ export const AppMobileView: React.FC = () => {
               appTab === '3D_CODE' ? 'bg-white text-slate-900 shadow-2xs font-bold' : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            三维彩码编码识别
+            三维彩码与扫码
           </button>
           <button
             onClick={() => setAppTab('SYNC')}
@@ -110,7 +110,7 @@ export const AppMobileView: React.FC = () => {
               appTab === 'SYNC' ? 'bg-white text-slate-900 shadow-2xs font-bold' : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            离线保存与网络同步
+            离线草稿与同步
           </button>
           <button
             onClick={() => setAppTab('USER')}
@@ -118,92 +118,120 @@ export const AppMobileView: React.FC = () => {
               appTab === 'USER' ? 'bg-white text-slate-900 shadow-2xs font-bold' : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            App Auth 个人中心
+            App 账号与设置
           </button>
         </div>
       </div>
 
       {/* Main Container */}
       {appTab === 'COLLECT' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Section 1: Base Capabilities */}
-          <div className="bg-white/90 backdrop-blur-md p-6 rounded-2xl border border-slate-200/80 shadow-2xs space-y-4 text-xs">
-            <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
-              <Camera className="w-4 h-4 text-blue-600" />
-              移动终端基础能力操控 (Spec 3.4)
-            </h3>
-
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => setCapturedPhoto(true)}
-                className={`p-3 rounded-xl border flex flex-col items-center gap-1.5 transition-all ${
-                  capturedPhoto ? 'bg-emerald-50 text-emerald-700 border-emerald-200 font-bold' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                }`}
-              >
-                <Camera className="w-5 h-5 text-blue-600" />
-                <span>{capturedPhoto ? '✓ 现场高精照片已拍' : '现场设备拍照'}</span>
-              </button>
-
-              <button
-                onClick={() => setRecordedAudio(!recordedAudio)}
-                className={`p-3 rounded-xl border flex flex-col items-center gap-1.5 transition-all ${
-                  recordedAudio ? 'bg-emerald-50 text-emerald-700 border-emerald-200 font-bold' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                }`}
-              >
-                <Mic className="w-5 h-5 text-teal-600" />
-                <span>{recordedAudio ? '✓ 异常作业录音中' : '现场音频录音'}</span>
-              </button>
-
-              <button
-                onClick={() => setFlashlightOn(!flashlightOn)}
-                className={`p-3 rounded-xl border flex flex-col items-center gap-1.5 transition-all ${
-                  flashlightOn ? 'bg-amber-500 text-white border-amber-500 font-bold' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                }`}
-              >
-                <Flashlight className="w-5 h-5 text-amber-500" />
-                <span>{flashlightOn ? '🔦 照明手电已开启' : '暗处补光照明'}</span>
-              </button>
-
-              <button
-                onClick={handleTriggerGps}
-                className="p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 flex flex-col items-center gap-1.5 transition-all"
-              >
-                <MapPin className="w-5 h-5 text-rose-600" />
-                <span>精准定位采集</span>
-              </button>
-            </div>
-
-            {/* GPS Fallback Info */}
-            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 font-mono space-y-1">
-              <div className="flex justify-between text-slate-500">
-                <span>当前定位数据:</span>
-                <span className="font-bold text-slate-900">{gpsLocation}</span>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Left Column: Phone Device Frame Preview (http://127.0.0.1:8080) */}
+          <div className="lg:col-span-5 flex flex-col items-center">
+            <div className="w-[360px] h-[720px] bg-slate-950 rounded-[48px] p-3 shadow-2xl border-4 border-slate-800 relative flex flex-col overflow-hidden">
+              {/* Phone Camera Notch / Speaker */}
+              <div className="w-32 h-5 bg-slate-900 rounded-full mx-auto mb-2 flex items-center justify-center space-x-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-slate-950 border border-slate-800"></span>
+                <span className="w-10 h-1 bg-slate-800 rounded-full"></span>
               </div>
-              {gpsError && <div className="text-amber-700 font-sans text-[11px] pt-1">⚠️ {gpsError}</div>}
+              
+              {/* Live Flutter Web App Iframe */}
+              <div className="flex-1 rounded-[32px] overflow-hidden bg-white relative">
+                <iframe
+                  src={typeof window !== 'undefined' ? `http://${window.location.hostname}:8080` : 'http://127.0.0.1:8080'}
+                  className="w-full h-full border-none"
+                  title="Flutter Mobile App Web Preview"
+                />
+              </div>
+
+              {/* Bottom Home Indicator */}
+              <div className="w-32 h-1 bg-slate-700 rounded-full mx-auto mt-2.5"></div>
             </div>
+            <span className="text-[11px] text-slate-400 font-mono mt-2 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              Flutter Web App 容器运行于 http://127.0.0.1:8080
+            </span>
           </div>
 
-          {/* Section 2: Asset Tagging */}
-          <div className="bg-white/90 backdrop-blur-md p-6 rounded-2xl border border-slate-200/80 shadow-2xs space-y-4 text-xs">
-            <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
-              <QrCode className="w-4 h-4 text-blue-600" />
-              现场采集设备赋码与打码贴签 (Spec 3.3)
-            </h3>
+          {/* Right Column: Hardware Simulation Controls */}
+          <div className="lg:col-span-7 space-y-4">
+            <div className="bg-white/90 backdrop-blur-md p-6 rounded-2xl border border-slate-200/80 shadow-2xs space-y-4 text-xs">
+              <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
+                <Camera className="w-4 h-4 text-blue-600" />
+                防爆手持终端硬件能力遥控 (Spec 3.4)
+              </h3>
 
-            <div className="space-y-3">
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 font-mono text-[11px] space-y-1.5">
-                <div>临时赋码编号: <span className="font-bold text-blue-600">YK-TMP-2026-8809</span></div>
-                <div>生成的标牌码: <span className="font-bold text-slate-900">Z$001001@ZC-TMP-8809</span></div>
-                <div>指定热敏尺寸: <span className="text-emerald-600 font-bold">50mm × 30mm 标准防爆贴签</span></div>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setCapturedPhoto(true)}
+                  className={`p-3 rounded-xl border flex flex-col items-center gap-1.5 transition-all ${
+                    capturedPhoto ? 'bg-emerald-50 text-emerald-700 border-emerald-200 font-bold' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <Camera className="w-5 h-5 text-blue-600" />
+                  <span>{capturedPhoto ? '✓ 现场高精照片已拍' : '现场设备拍照'}</span>
+                </button>
+
+                <button
+                  onClick={() => setRecordedAudio(!recordedAudio)}
+                  className={`p-3 rounded-xl border flex flex-col items-center gap-1.5 transition-all ${
+                    recordedAudio ? 'bg-emerald-50 text-emerald-700 border-emerald-200 font-bold' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <Mic className="w-5 h-5 text-teal-600" />
+                  <span>{recordedAudio ? '✓ 异常作业录音中' : '现场音频录音'}</span>
+                </button>
+
+                <button
+                  onClick={() => setFlashlightOn(!flashlightOn)}
+                  className={`p-3 rounded-xl border flex flex-col items-center gap-1.5 transition-all ${
+                    flashlightOn ? 'bg-amber-500 text-white border-amber-500 font-bold' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <Flashlight className="w-5 h-5 text-amber-500" />
+                  <span>{flashlightOn ? '🔦 照明手电已开启' : '暗处补光照明'}</span>
+                </button>
+
+                <button
+                  onClick={handleTriggerGps}
+                  className="p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 flex flex-col items-center gap-1.5 transition-all"
+                >
+                  <MapPin className="w-5 h-5 text-rose-600" />
+                  <span>精准定位采集</span>
+                </button>
               </div>
 
-              <button
-                onClick={() => alert('已成功向蓝牙防爆热敏打印机发送任务，并自动粘贴临时标牌！')}
-                className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-semibold flex items-center justify-center gap-2 shadow-xs transition-all active:scale-95"
-              >
-                <QrCode className="w-4 h-4 text-cyan-400" />
-                按指定模板打码贴签打印
-              </button>
+              {/* GPS Fallback Info */}
+              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 font-mono space-y-1">
+                <div className="flex justify-between text-slate-500">
+                  <span>当前定位数据:</span>
+                  <span className="font-bold text-slate-900">{gpsLocation}</span>
+                </div>
+                {gpsError && <div className="text-amber-700 font-sans text-[11px] pt-1">⚠️ {gpsError}</div>}
+              </div>
+            </div>
+
+            <div className="bg-white/90 backdrop-blur-md p-6 rounded-2xl border border-slate-200/80 shadow-2xs space-y-4 text-xs">
+              <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
+                <QrCode className="w-4 h-4 text-blue-600" />
+                现场采集设备赋码与打码贴签 (Spec 3.3)
+              </h3>
+
+              <div className="space-y-3">
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 font-mono text-[11px] space-y-1.5">
+                  <div>临时赋码编号: <span className="font-bold text-blue-600">YK-TMP-2026-8809</span></div>
+                  <div>生成的标牌码: <span className="font-bold text-slate-900">Z$001001@ZC-TMP-8809</span></div>
+                  <div>指定热敏尺寸: <span className="text-emerald-600 font-bold">50mm × 30mm 标准防爆贴签</span></div>
+                </div>
+
+                <button
+                  onClick={() => alert('已成功向蓝牙防爆热敏打印机发送任务，并自动粘贴临时标牌！')}
+                  className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-semibold flex items-center justify-center gap-2 shadow-xs transition-all active:scale-95"
+                >
+                  <QrCode className="w-4 h-4 text-cyan-400" />
+                  按指定模板打码贴签打印
+                </button>
+              </div>
             </div>
           </div>
         </div>
