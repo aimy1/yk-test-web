@@ -25,6 +25,8 @@ export const UnitManagementView: React.FC = () => {
   });
   const [showLevelConfigModal, setShowLevelConfigModal] = useState(false);
 
+  const [isCustomParentInput, setIsCustomParentInput] = useState(false);
+
   const [formData, setFormData] = useState<Unit>({
     code: '',
     name: '',
@@ -457,35 +459,63 @@ export const UnitManagementView: React.FC = () => {
 
               {/* Section 2: Hierarchy & Custom Level Titles */}
               <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 space-y-2.5">
-                <span className="font-bold text-slate-800 block text-[11px]">② 组织从属关系与体系定义</span>
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-slate-800 block text-[11px]">② 组织从属关系与体系定义 (自定义构建树形结构)</span>
+                  <button
+                    type="button"
+                    onClick={() => setIsCustomParentInput(!isCustomParentInput)}
+                    className="text-[10px] text-blue-600 hover:text-blue-800 font-semibold underline cursor-pointer"
+                  >
+                    {isCustomParentInput ? '切换为下拉选择模式' : '切换为手写自定义上级编码'}
+                  </button>
+                </div>
                 
                 <div>
-                  <label className="text-slate-600 block mb-1 font-semibold text-[10px]">上级从属单位 (决定树形结构)</label>
-                  <select
-                    value={formData.parent_code || ''}
-                    onChange={(e) => {
-                      const parentCode = e.target.value;
-                      const parentUnit = units.find(u => u.code === parentCode);
-                      const newLevel = !parentCode ? 1 : ((parentUnit?.level || 1) + 1);
-                      // Preserve existing level_name if set by user, otherwise fallback smoothly
-                      setFormData({
-                        ...formData,
-                        parent_code: parentCode,
-                        level: newLevel,
-                        level_name: formData.level_name || (!parentCode ? '顶级单位' : '从属单位'),
-                      });
-                    }}
-                    className="w-full bg-white border border-slate-200 rounded-lg p-2 text-slate-900 font-semibold"
-                  >
-                    <option value="">-- 无上级 (设为顶级/根节点单位) --</option>
-                    {units
-                      .filter((u) => u.code !== formData.code)
-                      .map((u) => (
-                        <option key={u.code} value={u.code}>
-                          [{u.code}] {u.name} {u.level_name ? `(${u.level_name})` : `(Level ${u.level || 1})`}
-                        </option>
-                      ))}
-                  </select>
+                  <label className="text-slate-600 block mb-1 font-semibold text-[10px]">
+                    上级从属单位编码 (决定树形结构)
+                  </label>
+                  
+                  {isCustomParentInput ? (
+                    <input
+                      type="text"
+                      value={formData.parent_code || ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setFormData({
+                          ...formData,
+                          parent_code: val,
+                          level: val ? (formData.level || 2) : 1,
+                        });
+                      }}
+                      placeholder="自由输入自定义上级单位代码，如: GRP-ROOT / DEPOT-01"
+                      className="w-full bg-white border border-blue-300 rounded-lg p-2 text-slate-900 font-mono text-xs focus:ring-1 focus:ring-blue-500"
+                    />
+                  ) : (
+                    <select
+                      value={formData.parent_code || ''}
+                      onChange={(e) => {
+                        const parentCode = e.target.value;
+                        const parentUnit = units.find(u => u.code === parentCode);
+                        const newLevel = !parentCode ? 1 : ((parentUnit?.level || 1) + 1);
+                        setFormData({
+                          ...formData,
+                          parent_code: parentCode,
+                          level: newLevel,
+                          level_name: formData.level_name || (!parentCode ? '顶级单位' : '从属单位'),
+                        });
+                      }}
+                      className="w-full bg-white border border-slate-200 rounded-lg p-2 text-slate-900 font-semibold text-xs"
+                    >
+                      <option value="">-- 无上级 (设为顶级/根节点单位) --</option>
+                      {units
+                        .filter((u) => u.code !== formData.code)
+                        .map((u) => (
+                          <option key={u.code} value={u.code}>
+                            [{u.code}] {u.name} {u.level_name ? `(${u.level_name})` : `(Level ${u.level || 1})`}
+                          </option>
+                        ))}
+                    </select>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
