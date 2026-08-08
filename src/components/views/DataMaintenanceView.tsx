@@ -478,23 +478,6 @@ export const DataMaintenanceView: React.FC = () => {
           </label>
 
           <button
-            onClick={handleRunAnalyze}
-            className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-all active:scale-95"
-          >
-            <AlertCircle className="w-4 h-4" />
-            排重与纠错检测
-          </button>
-
-          <button
-            onClick={handleAutoFixDuplicates}
-            className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-all active:scale-95"
-            title="一键自动为所有重复资产重编编号并消除重复标红"
-          >
-            <CheckCircle2 className="w-4 h-4 text-indigo-200" />
-            一键自动重编消错
-          </button>
-
-          <button
             onClick={() => {
               setEditingAsset(null);
               setFormData({
