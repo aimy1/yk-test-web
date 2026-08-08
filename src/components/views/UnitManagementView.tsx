@@ -456,33 +456,33 @@ export const UnitManagementView: React.FC = () => {
               </div>
 
               {/* Section 2: Hierarchy & Custom Level Titles */}
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 space-y-2">
-                <span className="font-bold text-slate-800 block text-[11px]">② 组织从属关系与层级定义</span>
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 space-y-2.5">
+                <span className="font-bold text-slate-800 block text-[11px]">② 组织从属关系与体系定义</span>
                 
                 <div>
-                  <label className="text-slate-600 block mb-1 font-semibold text-[10px]">上级单位 (决定树形结构)</label>
+                  <label className="text-slate-600 block mb-1 font-semibold text-[10px]">上级从属单位 (决定树形结构)</label>
                   <select
                     value={formData.parent_code || ''}
                     onChange={(e) => {
                       const parentCode = e.target.value;
                       const parentUnit = units.find(u => u.code === parentCode);
                       const newLevel = !parentCode ? 1 : ((parentUnit?.level || 1) + 1);
-                      const defaultTitles: Record<number, string> = { 1: '集团总部', 2: '储运分公司', 3: '基层发油油库', 4: '车间/作业班组' };
+                      // Preserve existing level_name if set by user, otherwise fallback smoothly
                       setFormData({
                         ...formData,
                         parent_code: parentCode,
                         level: newLevel,
-                        level_name: defaultTitles[newLevel] || `第 ${newLevel} 级单位`,
+                        level_name: formData.level_name || (!parentCode ? '顶级单位' : '从属单位'),
                       });
                     }}
                     className="w-full bg-white border border-slate-200 rounded-lg p-2 text-slate-900 font-semibold"
                   >
-                    <option value="">-- 无 (设置为 L1 顶级/集团总部单位) --</option>
+                    <option value="">-- 无上级 (设为顶级/根节点单位) --</option>
                     {units
                       .filter((u) => u.code !== formData.code)
                       .map((u) => (
                         <option key={u.code} value={u.code}>
-                          [{u.code}] {u.name} ({u.level_name || `Level ${u.level || 1}`})
+                          [{u.code}] {u.name} {u.level_name ? `(${u.level_name})` : `(Level ${u.level || 1})`}
                         </option>
                       ))}
                   </select>
@@ -501,15 +501,30 @@ export const UnitManagementView: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="text-slate-600 block mb-1 font-semibold text-[10px]">自定义层级称谓/分类名称</label>
+                    <label className="text-slate-600 block mb-1 font-semibold text-[10px]">自定义层级/体系称谓 *</label>
                     <input
                       type="text"
                       value={formData.level_name || ''}
                       onChange={(e) => setFormData({ ...formData, level_name: e.target.value })}
-                      placeholder="如: 核心仓储事业部 / 质检班组"
+                      placeholder="自由输入自定义称谓，如: 华东事业部 / 质检班组"
                       className="w-full bg-white border border-slate-200 rounded-lg p-2 text-slate-900 font-semibold"
                     />
                   </div>
+                </div>
+
+                {/* Quick Preset Tags for Custom Level Names */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-slate-400 text-[10px]">快捷常用称谓:</span>
+                  {['集团/总公司', '分公司/事业部', '发油油库/库区', '车间/作业班组', '特种仓储部', '质检中心'].map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, level_name: tag })}
+                      className="px-2 py-0.5 bg-white hover:bg-slate-200/80 border border-slate-200 rounded text-[10px] text-slate-600 transition-colors"
+                    >
+                      {tag}
+                    </button>
+                  ))}
                 </div>
               </div>
 
