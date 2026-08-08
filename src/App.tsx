@@ -129,7 +129,7 @@ export const App: React.FC = () => {
       case 'analytics':
         return <AnalyticsDashboardView key={refreshKey} />;
       case 'terminal':
-        return <TerminalManagementView key={refreshKey} />;
+        return <TerminalManagementView key={refreshKey} currentUser={currentUser} />;
       case 'user':
         return <UserManagementView key={refreshKey} />;
       case 'log':

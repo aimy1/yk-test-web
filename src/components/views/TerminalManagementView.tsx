@@ -1,9 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Smartphone, Plus, Edit, Trash2, Search, ShieldCheck, Wifi } from 'lucide-react';
+import { Smartphone, Plus, Edit, Trash2, Search, ShieldCheck, Wifi, WifiOff } from 'lucide-react';
 import { api } from '../../services/api';
 import { Terminal } from '../../types';
 
-export const TerminalManagementView: React.FC = () => {
+interface TerminalManagementViewProps {
+  currentUser?: {
+    username: string;
+    name: string;
+    unit_code: string;
+    unit_name: string;
+    role: string;
+  } | null;
+}
+
+export const TerminalManagementView: React.FC<TerminalManagementViewProps> = ({ currentUser }) => {
   const [terminals, setTerminals] = useState<Terminal[]>([]);
   const [units, setUnits] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -15,7 +25,7 @@ export const TerminalManagementView: React.FC = () => {
     terminal_code: '',
     unit_code: 'UNIT-001',
     purchase_date: '2024-01-01',
-    status: '已绑定同级单位',
+    status: '已绑定同级单位 (允许对接)',
   });
 
   const loadTerms = async () => {
@@ -125,9 +135,24 @@ export const TerminalManagementView: React.FC = () => {
                 </td>
                 <td className="p-3.5 text-slate-400">{t.purchase_date}</td>
                 <td className="p-3.5 font-sans">
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-semibold">
-                    <Wifi className="w-3 h-3 inline mr-1" /> {t.status}
-                  </span>
+                  {(() => {
+                    const isUnitMatched = !currentUser?.unit_code || t.unit_code === currentUser.unit_code;
+                    const isAllowed = isUnitMatched && !t.status.includes('禁用') && !t.status.includes('拒绝对接') && !t.status.includes('隔离');
+                    
+                    if (isAllowed) {
+                      return (
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-semibold flex items-center gap-1 w-fit">
+                          <Wifi className="w-3 h-3 text-emerald-600" /> 已同级绑定 (允许对接)
+                        </span>
+                      );
+                    } else {
+                      return (
+                        <span className="px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 text-[11px] font-semibold flex items-center gap-1 w-fit" title="非同级单位终端数据不可直接对接，已强行隔离防混乱">
+                          <WifiOff className="w-3 h-3 text-rose-600" /> 跨单位隔离 (拒绝对接)
+                        </span>
+                      );
+                    }
+                  })()}
                 </td>
                 <td className="p-3.5 text-right space-x-1.5">
                   <button onClick={() => { setFormData(t); setShowModal(true); }} className="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 rounded-lg border border-slate-200 text-[11px] font-medium shadow-2xs">
@@ -195,6 +220,19 @@ export const TerminalManagementView: React.FC = () => {
                       </option>
                     ))
                   )}
+                </select>
+              </div>
+              <div>
+                <label className="text-slate-700 block mb-1 font-semibold">对接许可与数据隔离状态</label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 font-semibold"
+                >
+                  <option value="已绑定同级单位 (允许对接)">已绑定同级单位 (允许对接)</option>
+                  <option value="跨单位隔离 (拒绝对接)">跨单位隔离 (拒绝对接)</option>
+                  <option value="未激活/待审核">未激活/待审核</option>
+                  <option value="设备已禁用">设备已禁用</option>
                 </select>
               </div>
             </div>
