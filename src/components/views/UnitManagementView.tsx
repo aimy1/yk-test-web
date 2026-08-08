@@ -441,19 +441,6 @@ export const UnitManagementView: React.FC = () => {
                   placeholder="如: 储运事业部 / 基层油库 / 维保工区 / 发油班组..."
                   className="w-full bg-white border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold text-xs focus:outline-none focus:border-blue-500"
                 />
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  <span className="text-[10px] text-slate-400 self-center">常用预设标签:</span>
-                  {['集团总部', '储运事业部', '油库处', '基层油库', '维保工区', '发油班组', '技术保障部'].map(tag => (
-                    <button
-                      key={tag}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, level_name: tag })}
-                      className="px-2 py-0.5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-md text-[10px] font-medium transition-all active:scale-95 cursor-pointer"
-                    >
-                      {tag}
-                    </button>
-                  ))}
-                </div>
               </div>
 
               <div>
